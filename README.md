@@ -67,6 +67,8 @@ Allows replay any story missions and combat tours
 
 Allows to load specific levels. The default level is 'city'
 
+this options inside the level select menu not works
+
 
 ### Hero Select
 
