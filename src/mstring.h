@@ -1,9 +1,19 @@
 #pragma once
 
 #include "func_wrapper.h"
+#include "variable.h"
+
+#include <cassert>
 
 #include <cstdarg>
 #include <cstdio>
+#include <stdlib.h>    
+#include <math.h>
+#include <windows.h>
+
+inline int& mString_count = var<int>(0x00957CEC);
+
+inline char *& null = var<char *>(0x0091E7C0);
 
 struct mString
 {
@@ -49,6 +59,14 @@ struct mString
         mString_finalize(this, 0, 0);
     }
 
+
+
+     void finalize(int zero)
+    {
+         void(__fastcall * func)(void*, int) = bit_cast<decltype(func)>(0x004209C0);
+        func(this, zero);
+    }
+
     mString &operator=(const mString &a2)
     {
         if (this != &a2)
@@ -57,6 +75,11 @@ struct mString
         }
 
         return (*this);
+    }
+
+    double to_float() const
+    {
+        return atof(this->guts);
     }
 
     mString &operator=(const char *a2)
@@ -69,6 +92,7 @@ struct mString
         return this->m_size;
     }
 
+
     void update_guts(const char* a2, signed int a3) {
 
         typedef void(__fastcall* mString_update_guts_ptr)(void *, void* edx, const char* a2, signed int a3);
@@ -78,6 +102,86 @@ struct mString
 
 
         return mString_update_guts(this, 0, a2, a3);
+    }
+
+
+    int sub_1066D20(mString*, int a2)
+    {
+        if (!a2) {
+            this->guts = null;
+            this->m_size = 0;
+        }
+        return ++mString_count;
+    }
+
+    int sub_6657FD(mString*, int a2)
+    {
+        return sub_1066D20(this, a2);
+    }
+    void sub_6A1D7F(mString*, mString* a1)
+    {
+    }
+
+    mString* sub_1067DC0(mString*, const char* a1)
+    {
+        update_guts(a1, -1);
+        return this;
+    }
+
+    mString* __as(int, const char* a1)
+    {
+        return sub_1067DC0(this, a1);
+    }
+
+
+
+
+
+    void sub_691A3D(mString* _this, mString* a1)
+    {
+
+    }
+
+        char operator[](int i) const
+    {
+        assert(guts != nullptr);
+        assert(i <= (int)m_size);
+
+        assert(i >= 0);
+
+        return this->guts[i];
+    }
+
+    char at(int i) const
+    {
+        return (*this)[i];
+    }
+
+
+
+
+    mString* mString_1(mString* a1, float a2)
+    {
+        const char* v4 = "%0.3f";
+        char a3[128];
+        snprintf(a3, 128, "%0.3f", a2);
+        sub_6657FD(a1, 0);
+        update_guts(v4, -1);
+        return a1;
+    }
+
+    mString* from_char(char* a2)
+    {
+        this->sub_6657FD(this, 0);
+        if (a2) {
+            this->update_guts(a2, -1);
+        }
+        return this;
+    }
+
+        inline bool empty() const
+    {
+        return m_size == 0;
     }
 
     const char *c_str() const

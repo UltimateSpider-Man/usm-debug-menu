@@ -7,7 +7,7 @@
 #include "vtbl.h"
 #include "variable.h"
 #include "vector3d.h"
-
+#include "utility.h"
 #include "list.hpp"
 
 struct collision_geometry;
@@ -40,6 +40,21 @@ struct entity : signaller
         auto &func = get_vfunc(m_vtbl, 0x1BC);
 
         func(this, 0, a1);
+    }
+
+    void release_mem()
+    {
+    }
+
+    int get_flavor()
+    {
+        if constexpr (1) {
+            int(__fastcall * func)(entity_base*) = CAST(func, get_vfunc(m_vtbl, 0x54));
+            return func(this);
+
+        } else {
+            return 3;
+        }
     }
 
     region * get_primary_region()

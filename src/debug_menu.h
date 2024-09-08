@@ -16,6 +16,7 @@ constexpr auto MAX_CHARS = MAX_CHARS_SAFE + 1;
 
 enum debug_menu_entry_type {
     UNDEFINED = 0,
+    NORMAL,
     FLOAT_E,
     POINTER_FLOAT,
     INTEGER,
@@ -44,32 +45,34 @@ extern std::string entry_render_callback_default(debug_menu_entry* entry);
 struct script_instance;
 
 struct debug_menu_entry {
-	char text[MAX_CHARS];
-	debug_menu_entry_type entry_type;
+    char text[MAX_CHARS];
+    debug_menu_entry_type entry_type;
     union {
+        float data2;
         float fval;
-        float *p_fval;
+        float* p_fval;
         bool bval;
-        bool *p_bval;
+        bool* p_bval;
         int ival;
-        int *p_ival;
-        debug_menu *p_menu;
+        int* p_ival;
+        debug_menu* p_menu;
     } m_value;
-	void* data1;
-    uint16_t m_id {0};
-    std::string (*render_callback)(debug_menu_entry *) = entry_render_callback_default;
-    void (*m_game_flags_handler)(debug_menu_entry *) = nullptr;
-    void (*frame_advance_callback)(debug_menu_entry *) = entry_frame_advance_callback_default;
-    script_instance *field_14;
+    void* data;
+    void* data1;
+    uint16_t m_id { 0 };
+    std::string (*render_callback)(debug_menu_entry*) = entry_render_callback_default;
+    void (*m_game_flags_handler)(debug_menu_entry*) = nullptr;
+    void (*frame_advance_callback)(debug_menu_entry*) = entry_frame_advance_callback_default;
+    script_instance* field_14;
     int field_18;
     struct {
         float m_min_value;
         float m_max_value;
         float m_step_size;
         float m_step_scale;
-    } field_20 {0.f, 1.f, 0.1f, 10.f};
-    bool m_value_initialized {false};
-    void *m_data = nullptr;
+    } field_20 { 0.f, 1.f, 0.1f, 10.f };
+    bool m_value_initialized { false };
+    void* m_data = nullptr;
 
     void set_step_size(float a2)
     {
@@ -100,10 +103,62 @@ struct debug_menu_entry {
     {
         m_id = id;
     }
-
+    bool sub_672CE1(char* a1, int* a2)
+    {
+        return *a2 == *a1;
+    }
     auto get_id() const
     {
         return m_id;
+    }
+
+    void sub_66A02D(mString)
+    {
+        mString v4;
+        v4.finalize(0);
+    }
+
+void*  sub_65CD1A(int a1)
+    {
+    return 0;
+    }
+
+    
+float sub_C307B0(mString* a1, float a2)
+    {
+
+        auto v5 = a1;
+        a1->mString_1(a1, a2);
+        auto v6 = 0;
+        a1->sub_691A3D(v5, a1);
+        auto v9 = -1;
+        a1->finalize(0);
+        return a2;
+    }
+
+mString* sub_C30700(mString* a0, const char* a2, char* a1)
+    {
+
+        auto v6 = a0;
+        mString();
+        auto v7 = 0;
+        a0->__as(a0->field_0, a2);
+        auto v4 = a0->from_char(a1);
+        auto v0 = 1;
+        a0->sub_6A1D7F(v6, v4);
+        v7 = 0;
+        a0->finalize(0);
+        return v6;
+    }
+
+mString* sub_67086F(mString* a0, const char* p, char* a1)
+    {
+        return sub_C30700(a0, p, a1);
+    }
+
+    float sub_6A7BC1(mString* a1, float a2)
+    {
+        return sub_C307B0(a1, a2);
     }
 
     void set_frame_advance_cb(void (*a2)(debug_menu_entry *))

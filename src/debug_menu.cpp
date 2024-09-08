@@ -66,6 +66,10 @@ std::string entry_render_callback_default(debug_menu_entry* entry)
 		sprintf(str, "%d", val);
         return {str};
     }
+    case POINTER_MENU: {
+        auto* str = (">");
+        return { str };
+    }
     default:
         break;
     }
@@ -267,7 +271,7 @@ void* add_debug_menu_entry(debug_menu* menu, debug_menu_entry* entry)
 		memcpy(ret, entry, sizeof(debug_menu_entry));
 		++menu->used_slots;
 
-        if (entry->entry_type == POINTER_MENU && menu->used_slots > 1) {
+        if (entry->entry_type == NORMAL && menu->used_slots > 1) {
             std::swap(menu->entries[0], menu->entries[menu->used_slots - 1]);
         }
 

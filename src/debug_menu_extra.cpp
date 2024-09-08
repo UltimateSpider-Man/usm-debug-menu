@@ -2,11 +2,14 @@
 
 #include "debug_menu.h"
 #include "entity_tracker_manager.h"
-#include "game_settings.h"
+#include "game_data_meat.h"
 #include "geometry_manager.h"
 #include "input_mgr.h"
 #include "resource_manager.h"
 #include "spider_monkey.h"
+#include "mstring.h"
+#include "dvar.h"
+
 
 #include <cassert>
 
@@ -586,16 +589,12 @@ void populate_gamefile_menu(debug_menu_entry *entry)
         v494->add_entry(&v396);
     }
 }
-
-void create_gamefile_menu(debug_menu *parent)
+void create_gamefile_menu(debug_menu* parent)
 {
-    assert(parent != nullptr);
-
-    auto v5 = debug_menu_entry(mString{"Saved Game Settings"});
-    parent->add_entry(&v5);
-
-    debug_menu_entry *entry = &parent->entries[parent->used_slots - 1];
-    populate_gamefile_menu(entry);
+    auto* game_file_menu = create_menu("Saved Game Settings");
+    auto* v2 = create_menu_entry(game_file_menu);
+    v2->set_game_flags_handler(populate_gamefile_menu);
+    parent->add_entry(v2);
 }
 
 void warp_handler(debug_menu_entry *entry)
@@ -690,6 +689,9 @@ inline void ngl_handler(debug_menu_entry *a1)
     auto *v2 = v1.c_str();
     nglSetDebugFlag(v2, v3);
 }
+
+
+
 
 void create_ngl_menu(debug_menu *parent)
 {
@@ -1306,3 +1308,197 @@ void create_camera_menu_items(debug_menu *parent)
     parent->add_entry(new_entry);
     g_debug_camera_entry = new_entry;
 }
+static const float flt_881AC0 = 0.5;
+static const float flt_882098 = 2.5;
+static const float flt_87EA34 = 0.75;
+static const float flt_8820A0 = 0.66000003;
+static const float flt_87EEDC = 0.69999999;
+
+
+
+
+
+char Source = '\0';
+
+
+
+
+
+int sub_C3B071(int a1)
+{
+    return a1 + 12;
+}
+
+int sub_C3B070(int a1)
+{
+    return sub_C3B071(a1);
+}
+
+int sub_677200(void*)
+{
+    int a1 = 12;
+    return sub_C3B070(a1);
+}
+
+int* sub_66558C(void* a1)
+{
+    return nullptr;
+}
+
+void sub_671882(void* a1, int a2)
+{
+    a1 = (void*)a2;
+}
+
+void sub_66699B(void* a1, int a2)
+{
+    sub_671882(a1, a2);
+}
+
+int* sub_688BF9(void* a1, int* a2)
+{
+    int* v2 = sub_66558C(a1);
+    sub_66699B(a2, *v2);
+    return a2;
+}
+
+
+
+
+#include <string>
+
+bool isValidNumber(const std::string& input)
+{
+    char dotFlag = 0;
+
+    if (input.empty()) {
+        return false;
+    }
+
+    for (int i = 0; i < input.size(); ++i) {
+        char currentChar = input[i];
+
+        if (!isdigit(currentChar)
+            && (i || input[0] != '-')
+            && (i || input[0] != '+')
+            && (dotFlag || input[i] != '.')) {
+            return false;
+        }
+
+        if (input[i] == '.') {
+            dotFlag = 1;
+        }
+    }
+
+    return true;
+}
+
+#include <iostream>
+
+int* sub_C3AD60(int* a1, void* a2)
+{
+    sub_66699B(a2, a1[1]);
+    return 0;
+}
+
+int* sub_676A80(int* a1, void* a2)
+{
+    return sub_C3AD60(a1, a2);
+}
+
+
+
+int* sub_C41580(int* a1, int a2)
+{
+    sub_671882(a1, a2);
+    return a1;
+}
+
+int* sub_66699B(int* a1, int a2)
+{
+    return sub_C41580(a1, a2);
+}
+
+
+
+
+int* sub_C4A690(int* this_ptr, int a2)
+{
+    *this_ptr = a2;
+    return this_ptr;
+}
+
+int* sub_671882(int* a1, int a2)
+{
+    return sub_C4A690(a1, a2);
+}
+
+
+void dvar_select_handler(debug_menu_entry* a1)
+{
+    mString* v5 = { 0 };
+    auto script_handler_0 = a1->get_script_handler();
+    const char* v2 = script_handler_0.c_str();
+    mString* v4 = a1->sub_67086F(v5, v2, &Source);
+    auto v6 = 0;
+    auto fval = a1->get_fval();
+    a1->sub_6A7BC1(v4, fval);
+    auto v9 = -1;
+    a1->sub_66A02D(v5[0]);
+}
+
+float& g_camera_min_dist = var<float>(0x00881AB4);
+
+float& g_camera_max_dist = var<float>(0x00881AB8);
+
+float& g_camera_supermax_dist = var<float>(0x00881ABC);
+
+void populate_dvars(debug_menu_entry* entry)
+{
+
+    auto* v7 = create_menu("Dvars", debug_menu::sort_mode_t::undefined);
+    entry->set_submenu(v7);
+
+
+            
+    
+    auto* camera_min_dist = create_menu_entry(mString { "camera_min_dist" });
+    mString v0;
+    auto v6 = v0.to_float();
+    const float v5[4] { -1000.0, 1000.0, 0.5, 10.0 };
+    camera_min_dist->set_fl_values(v5);
+    camera_min_dist->set_pt_fval(&g_camera_min_dist);
+    v7->add_entry(camera_min_dist);
+
+    auto* camera_max_dist = create_menu_entry(mString { "camera_max_dist" });
+    mString v1;
+    auto v10 = v1.to_float();
+    const float v8[4] { -1000.0, 1000.0, 0.5, 10.0 };
+    camera_max_dist->set_fl_values(v8);
+    camera_max_dist->set_pt_fval(&g_camera_max_dist);
+    v7->add_entry(camera_max_dist);
+
+    auto* camera_supermax_dist = create_menu_entry(mString { "camera_supermax_dist" });
+    mString v2;
+    const float v9[4] { -1000.0, 1000.0, 0.5, 10.0 };
+    static float v13 = 0.0;
+    camera_supermax_dist->set_fl_values(v9);
+    camera_supermax_dist->set_pt_fval(&g_camera_supermax_dist);
+    v7->add_entry(camera_supermax_dist);
+
+
+        }
+    
+
+
+
+
+void create_dvar_menu(debug_menu* arg0)
+{
+    auto* dvar_menu = create_menu("Dvars");
+    auto* v2 = create_menu_entry(dvar_menu);
+    v2->set_game_flags_handler(populate_dvars);
+    arg0->add_entry(v2);
+
+}
+

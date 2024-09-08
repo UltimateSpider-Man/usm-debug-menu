@@ -80,6 +80,8 @@ void populate_entity_animation_menu(debug_menu_entry *entry)
     }
 }
 
+
+
 void create_entity_animation_menu(debug_menu *parent)
 {
     debug_menu_entry v5 {mString{"Entity Animations"}};

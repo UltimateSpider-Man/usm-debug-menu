@@ -15,6 +15,9 @@
 #include "terrain.h"
 #include "utility.h"
 #include "wds.h"
+#include "rumble_struct.h"
+#include "limited_timer.h"
+#include "game_button.h"
 
 struct game_process
 {
@@ -30,52 +33,123 @@ inline Var<game_process> lores_game_process{0x00922074};
 
 struct game_settings;
 struct message_board;
+struct world_dynamics_system;
+struct entity_base;
+struct localized_string_table;
+struct game_process;
+struct camera;
+struct input_mgr;
+struct mic;
+struct nglMesh;
+struct vector2di;
+struct resource_key;
+struct level_descriptor_t;
 
-struct game
-{
-    char field_0[0x5C];
-    entity *field_5C;
-    entity *current_game_camera;
-    void *field_64;
-    message_board *mb;
-    struct {
-        int field_0;
-        game_process *m_first;
-        game_process *m_last;
-        game_process *m_end;
+enum class game_state {
+    LEGAL = 1,
+    WAIT_LINK = 4,
+    LOAD_LEVEL = 5,
+    RUNNING = 6,
+    PAUSED = 7,
+};
 
-        auto &back()
-        {
-            return *(m_last - 1);
-        }
-    } process_stack;
+struct game;
 
-    int field_7C[17];
-    game_settings *gamefile;
-    int field_C4[41];
+struct game {
+    struct level_load_stuff {
+        level_descriptor_t* descriptor;
+        mString name_mission_table;
+        mString field_14;
+        vector3d field_24;
+        int field_30;
+        limited_timer_base field_34;
+        bool load_widgets_created;
+        bool load_completed;
+        bool field_3A;
+        bool field_3B;
+    };
 
-    struct {
+    struct flag_t {
         bool level_is_loaded;
         bool single_step;
         bool physics_enabled;
         bool field_3;
         bool game_paused;
-    } flag;
+    };
+
+    char field_0;
+    char field_1;
+    char field_2;
+    mString field_4;
+    level_load_stuff level;
+    world_dynamics_system* the_world;
+    int field_54;
+    int field_58;
+    entity* field_5C;
+    entity_base* current_game_camera;
+    mic* field_64;
+    message_board* mb;
+    std::vector<game_process> process_stack;
+    localized_string_table* field_7C;
+    game_button field_80;
+    nglMesh* field_B4;
+    nglMesh* field_B8;
+    char field_BC;
+    char empty3[6];
+    game_settings* gamefile;
+    int empty4[30];
+    float field_13C;
+    float field_140;
+    int field_144;
+    char field_148;
+    char field_149;
+    char field_14A;
+    float field_14C;
+    float field_150;
+    int field_154;
+    bool field_158;
+    bool field_159;
+    bool field_15A;
+    bool field_15B;
+    bool field_15C;
+    bool field_15D;
+    bool field_15E;
+    bool field_15F;
+    bool field_160;
+    bool field_161;
+    bool field_162;
+    bool field_163;
+    bool field_164;
+    bool field_165;
+    bool field_166;
+    bool field_167;
+    flag_t flag;
     bool field_16D;
     bool field_16E;
-    bool field_16F;
+    bool m_hero_start_enabled;
     bool field_170;
     bool field_171;
-    bool field_172;
+    bool m_user_camera_enabled;
     bool field_173;
     vector3d field_174;
     vector3d field_180[10];
     vector3d field_1F8[10];
     int field_270;
-    int field_274;
-    int field_278;
+    float field_274;
+    float field_278;
     int field_27C;
     int field_280;
+    float field_284;
+    int field_288;
+    float field_28C;
+    float field_290;
+    bool field_2B4;
+    bool field_2B5;
+    int field_2B8;
+    int field_2BC;
+    limited_timer_base field_2C0;
+
+
 
     game_settings *get_game_settings() {
         assert(gamefile != nullptr);
@@ -84,12 +158,15 @@ struct game
     }
 
     void enable_user_camera(bool a2) {
-        this->field_172 = a2;
+        this->m_user_camera_enabled = a2;
     }
 
     bool is_user_camera_enabled() const {
-        return this->field_172;
+        return this->m_user_camera_enabled;
     }
+
+    void handle_frame_locking(float* a1);
+
 
     void set_camera(int camera_state);
 
@@ -123,18 +200,42 @@ struct game
         this->push_process(lores_game_process());
     }
 
-    void load_new_level(const mString &a1, int a2)
-    {
-        void (__fastcall *func)(void *, void *, const mString *, int) = bit_cast<decltype(func)>(0x00514C70);
 
-        func(this, nullptr, &a1, a2);
-    }
+
 
     void begin_hires_screenshot(int a2, int a3)
     {
         void (__fastcall *func)(void *, void *, int, int) = (decltype(func)) 0x00548C10;
         func(this, nullptr, a2, a3);
     }
+
+    void unload_hero_packfile()
+    {
+        void(__fastcall * func)(void*, void*) = (decltype(func))0x00558320;
+        func(this, nullptr);
+    }
+
+    void render_bar_of_shame();
+
+
+    void advance_state_wait_link(Float a2);
+
+
+    
+ void show_max_velocity();
+
+ void _load_new_level(const mString& a2);
+
+
+ void load_new_level(const mString& a2, const vector3d& a3);
+
+
+ void load_new_level(const mString& a1, int a2);
+
+     void set_current_camera(camera* a2, bool a3);
+
+     void setup_inputs();
+     void setup_inputs_registration();
 
     mString get_hero_info();
 
@@ -145,9 +246,22 @@ struct game
     void show_debug_info();
 
     void frame_advance_level(Float time_inc);
+
+        void setup_input_registrations();
+
+
+        game();
+
 };
 
 inline Var<game *> g_game_ptr{0x009682E0};
 
 extern void game_patch();
 
+    extern void game__setup_inputs(game* a1);
+
+    static inline auto& setup_input_registrations_p = var<int (*)(game*)>(0x0095C8F8);
+
+    
+
+static inline void (*setup_inputs_p)(game*) = game__setup_inputs;

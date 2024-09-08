@@ -42,6 +42,9 @@ struct input_mgr
 
     void insert_device(input_device *a2);
 
+    void clear_mapping();
+
+
     static inline Var<input_mgr *> instance {0x009685DC};
 };
 

@@ -28,6 +28,14 @@ void input_mgr::map_control(int a2, device_id_t a3, int axis)
     func(this, nullptr, a2, a3, axis);
 }
 
+void input_mgr::clear_mapping()
+{
+  
+
+        CDECL_CALL(0x005DC2A0, this);
+    
+}
+
 void input_mgr::scan_devices()
 {
     TRACE("input_mgr::scan_devices");

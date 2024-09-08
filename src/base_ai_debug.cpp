@@ -263,6 +263,9 @@ void populate_ai_root(debug_menu_entry *arg0)
     }
 }
 
+
+
+
 void create_ai_root_menu(debug_menu *parent)
 {
     assert(parent != nullptr);
@@ -272,3 +275,7 @@ void create_ai_root_menu(debug_menu *parent)
     v5.set_game_flags_handler(populate_ai_root);
     parent->add_entry(&v5);
 }
+
+
+
+

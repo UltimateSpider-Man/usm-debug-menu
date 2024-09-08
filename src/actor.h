@@ -60,6 +60,14 @@ struct actor : entity
         func(this, 0, a2, a3);
     }
 
+    void destroy_player_controller()
+    {
+        void(__fastcall * func)(void*) = bit_cast<decltype(func)>(0x004C0D40);
+        func(this);
+        }
+    
+
+
     animation_controller::anim_ctrl_handle play_anim(const string_hash &a3);
 
     static std::vector<nalAnimClass<nalAnyPose> *> get_animations(actor *a1);

@@ -6,6 +6,7 @@
 
 #include "common.h"
 #include "fixedstring32.h"
+#include "os_developer_options.h"
 
 namespace MemoryUnitManager
 {
@@ -133,7 +134,9 @@ struct game_data_meat {
     fixedstring32 field_114;
     fixedstring32 field_134;
 
-    void init();
+void init();
+
+game_data_meat();
 
 };
 
@@ -155,6 +158,31 @@ struct game_settings {
     bool field_4C2;
     int m_slot_num;
     int field_4C8;
+
+   game_settings()
+        : field_4 { 0 }
+    {
+        if constexpr (1) {
+            this->m_vtbl = 0x0088B234;
+
+            this->field_4BF = false;
+            this->field_4C0 = false;
+            this->field_4C1 = false;
+            this->field_4C2 = false;
+            this->field_4BF = false;
+
+            [[maybe_unused]] auto v4 = os_developer_options::instance()->get_string(os_developer_options::strings_t::SKU);
+
+            strncpy(this->field_4A8, "", 12u);
+            this->field_4A8[11] = '\0';
+
+            this->field_4B8 = 0;
+            this->m_slot_num = 0;
+            this->field_4C8 = 0;
+        } else {
+            CDECL_CALL(0x0057BF50, this);
+        }
+    }
 };
 
 VALIDATE_SIZE(game_settings, 0x4CCu);

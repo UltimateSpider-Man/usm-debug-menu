@@ -16,6 +16,8 @@
 #include "fe_health_widget.h"
 #include "wds.h"
 #include "ai_player_controller.h"
+#include "osassert.h"
+#include "smoke_test.h"
 
 #include <cassert>
 
@@ -106,6 +108,7 @@ void level_select_handler(debug_menu_entry *entry)
     }
 
     g_game_ptr()->load_new_level(v15, -1);
+    g_smoke_test()->sub_57B610();
 }
 
 
@@ -126,33 +129,6 @@ void create_level_select_menu(debug_menu *level_select_menu)
 {
     //assert(debug_menu::root_menu != nullptr);
 
-    int arg0;
-    auto *level_descriptors = get_level_descriptors(&arg0);
-    printf("num_descriptors = %d\n", arg0);
-    for ( auto i = 0; i < arg0; ++i )
-    {
-        auto v6 = 25;
-        auto *v1 = level_descriptors[i].field_0.to_string();
-        string_hash v5{v1};
-        auto v11 = resource_key{v5, v6};
-        auto v17 = resource_manager::get_pack_file_stats(v11, nullptr, nullptr, nullptr);
-        if ( v17 )
-        {
-            mString v22 {level_descriptors[i].field_60.to_string()};
-            debug_menu_entry v39 {v22.c_str()};
-
-            v39.set_game_flags_handler(level_select_handler);
-            v39.m_id = i;
-            level_select_menu->add_entry(&v39);
-        }
-    }
-
-    mString v25{"-- REBOOT --"};
-    debug_menu_entry v38 {v25.c_str()};
-
-    v38.set_game_flags_handler(reboot_handler);
-    
-    level_select_menu->add_entry(&v38);
 
     static debug_menu *hero_select_menu = create_menu("Hero Select");
 
@@ -175,8 +151,36 @@ void create_level_select_menu(debug_menu *level_select_menu)
             v37.m_id = i;
             v37.set_frame_advance_cb(hero_entry_callback);
             hero_select_menu->add_entry(&v37);
-        }
-    }
+
+
+            }
+    }        
+    int arg0;
+            auto* level_descriptors = get_level_descriptors(&arg0);
+            printf("num_descriptors = %d\n", arg0);
+            for (auto i = 0; i < arg0; ++i) {
+                auto v6 = 25;
+                auto* v1 = level_descriptors[i].field_0.to_string();
+                string_hash v5 { v1 };
+                auto v11 = resource_key { v5, v6 };
+                auto v17 = resource_manager::get_pack_file_stats(v11, nullptr, nullptr, nullptr);
+                if (v17) {
+                    mString v22 { level_descriptors[i].field_60.to_string() };
+                    debug_menu_entry v39 { v22.c_str() };
+
+                    v39.set_game_flags_handler(level_select_handler);
+                    v39.m_id = i;
+                    level_select_menu->add_entry(&v39);
+                }
+            }
+
+            mString v25 { "-- REBOOT --" };
+            debug_menu_entry v38 { v25.c_str() };
+
+            v38.set_game_flags_handler(reboot_handler);
+
+            level_select_menu->add_entry(&v38);
+
 }
 
 struct debug_menu_entry;
@@ -218,6 +222,8 @@ void hero_entry_callback(debug_menu_entry *)
 
             assert(v10 && "Cannot add another_player");
             */
+
+            error("Hero Not Exist");
                
             g_game_ptr()->enable_marky_cam(false, true, -1000.0, 0.0);
             frames_to_skip = 2;
