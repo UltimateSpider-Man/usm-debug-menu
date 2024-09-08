@@ -6,7 +6,7 @@
 struct resource_location
 {
     resource_key field_0;
-    int filed_8;
+    uint32_t m_offset;
     int m_size;
 };
 

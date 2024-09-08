@@ -19,6 +19,11 @@ inline Var<BOOL[150]> flag_defaults{0x00936678};
 
 inline Var<const char *[150]> flag_names { 0x00936420 };
 
+
+inline Var<int[76]> string_defaults { 0x00936908 };
+
+inline Var<const char* [14]> string_names { 0x09368D0 };
+
 struct os_developer_options
 {
     enum strings_t {
@@ -44,6 +49,26 @@ struct os_developer_options
     int m_ints[76];
     mString field_2AC;
 
+
+
+         int get_string_from_name(const mString& a1)
+    {
+
+        auto func = [&a1](auto& v2) {
+            return (_strcmpi(v2, a1.c_str()) == 0);
+        };
+
+        auto it = std::find_if(std::begin(string_names()),
+            std::end(string_names()),
+            func);
+
+        if (it == std::end(int_names())) {
+            printf("Nonexistent int %s", a1.c_str());
+        }
+
+        return std::distance(std::begin(string_names()), it);
+    }
+
     std::optional<mString> get_string(strings_t a2)
     {
         if (a2 < strings_t::SOUND_LIST || a2 > strings_t::DEBUG_ENTITY_NAME) {
@@ -53,6 +78,19 @@ struct os_developer_options
             return a3;
         }
     }
+
+    void set_string(const mString& a2, const mString& a3)
+    {
+        auto v4 = this->get_string_from_name(a2);
+
+        this->set_string(v4, a3);
+    }
+
+    void set_string(int a2, const mString& a3)
+    {
+        this->m_strings[a2] = a3;
+    }
+
 
     int get_int(const mString &a2)
     {
@@ -85,6 +123,19 @@ struct os_developer_options
 
         return std::distance(std::begin(int_names()), it);
     }
+
+    mString* get_hero_name() const
+    {
+        if constexpr (1) {
+            static mString result { "HERO" };
+
+            result = this->m_strings[2];
+            return &result;
+        } else {
+            return (mString*)CDECL_CALL(0x005C3150, this);
+        }
+    }
+
 
     int get_flag_from_name(const mString &a1) const
     {
@@ -125,5 +176,5 @@ struct os_developer_options
     static inline Var<os_developer_options *> instance{0x0096858C};
 };
 
-VALIDATE_SIZE(os_developer_options, 0x2BCu);
+VALIDATE_SIZE(os_developer_options, 0x2bcu);
 

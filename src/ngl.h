@@ -834,63 +834,63 @@ inline void nglGetStringDimensions(nglFont *Font, const char *a2, int *a3, int *
 
 inline uint8_t *nglGetDebugFlagPtr(const char *Flag)
 {
-    if ( strcmpi(Flag, "ShowPerfInfo") == 0 ) {
+    if ( strcmp(Flag, "ShowPerfInfo") == 0 ) {
         return &nglDebug().ShowPerfInfo;
     }
 
-    if ( strcmpi(Flag, "ShowPerfBar") == 0 ) {
+    if ( strcmp(Flag, "ShowPerfBar") == 0 ) {
         return &nglDebug().ShowPerfBar;
     }
 
-    if ( strcmpi(Flag, "ScreenShot") == 0 ) {
+    if ( strcmp(Flag, "ScreenShot") == 0 ) {
         return &nglDebug().ScreenShot;
     }
 
-    if ( strcmpi(Flag, "DisableQuads") == 0 ) {
+    if ( strcmp(Flag, "DisableQuads") == 0 ) {
         return &nglDebug().DisableQuads;
     }
 
-    if ( strcmpi(Flag, "DisableVSync") == 0 ) {
+    if ( strcmp(Flag, "DisableVSync") == 0 ) {
         return &nglDebug().DisableVSync;
     }
 
-    if ( strcmpi(Flag, "DisableScratch") == 0 ) {
+    if ( strcmp(Flag, "DisableScratch") == 0 ) {
         return &nglDebug().DisableScratch;
     }
 
-    if ( strcmpi(Flag, "DebugPrints") == 0 ) {
+    if ( strcmp(Flag, "DebugPrints") == 0 ) {
         return &nglDebug().DebugPrints;
     }
 
-    if ( strcmpi(Flag, "DumpFrameLog") == 0 ) {
+    if ( strcmp(Flag, "DumpFrameLog") == 0 ) {
         return &nglDebug().DumpFrameLog;
     }
 
-    if ( strcmpi(Flag, "DumpSceneFile") == 0 ) {
+    if ( strcmp(Flag, "DumpSceneFile") == 0 ) {
         return &nglDebug().DumpSceneFile;
     }
 
-    if ( strcmpi(Flag, "DumpTextures") == 0 ) {
+    if ( strcmp(Flag, "DumpTextures") == 0 ) {
         return &nglDebug().DumpTextures;
     }
 
-    if ( strcmpi(Flag, "DrawLightSpheres") == 0 ) {
+    if ( strcmp(Flag, "DrawLightSpheres") == 0 ) {
         return &nglDebug().DrawLightSpheres;
     }
 
-    if ( strcmpi(Flag, "DrawMeshSpheres") == 0 ) {
+    if ( strcmp(Flag, "DrawMeshSpheres") == 0 ) {
         return &nglDebug().DrawMeshSpheres;
     }
 
-    if ( strcmpi(Flag, "DisableDuplicateMaterialWarning") == 0 ) {
+    if ( strcmp(Flag, "DisableDuplicateMaterialWarning") == 0 ) {
         return &nglDebug().DisableDuplicateMaterialWarning;
     }
 
-    if ( strcmpi(Flag, "DisableMissingTextureWarning") == 0 ) {
+    if ( strcmp(Flag, "DisableMissingTextureWarning") == 0 ) {
         return &nglDebug().DisableMissingTextureWarning;
     }
 
-    if ( strcmpi(Flag, "RenderSingleNode") == 0 ) {
+    if ( strcmp(Flag, "RenderSingleNode") == 0 ) {
         return &nglDebug().RenderSingleNode;
     }
 
