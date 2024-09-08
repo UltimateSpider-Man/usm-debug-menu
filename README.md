@@ -1,10 +1,15 @@
 # Ultimate Spider-Man Debug menu for PC 
 
-**Recreation** of the PS2 version's debug menu for the PC version
+**Recreation** of the PS2 and XBOX Preview version's debug menu for the PC version
 
 ## Download
 
-Get the menu from [here](https://github.com/krystalgamer/usm-debug-menu/releases)
+Get the menu from [here](https://github.com/UltimateSpider-Man/usm-debug-menu/releases)
+
+## Requirements
+
+* Visual C++ 2015
+
 
 ## Installation
 
@@ -19,7 +24,20 @@ Get the menu from [here](https://github.com/krystalgamer/usm-debug-menu/releases
 * **LEFT/RIGHT Arrows** - changes the value of the current **boolean** option
 * **ESCAPE** - go to previous menu
 
+## Gamepad Controls
+
+* **R3** - opens and closes the menu
+* **UP/DOWN Sticks** - moves the current select option up and down
+* **CROSS** - executes the selected option
+* **LEFT/RIGHT d-pads** - changes the value of the current **boolean** option
+* **CIRCLE** - go to previous menu
+
 ## Current implemented options
+
+### Dvars
+
+Allows to edit game camera distances
+
 
 ### Warp
 
@@ -31,17 +49,47 @@ Allows to teleport to any in-game region
 
 Allows to switch between variants of given regions
 
-### Char Select
+
+### Entity variants
+
+Allow to view only hash codes of entity variants
+
+### Replay
+
+This menu useless because if you press Start Option nothing happens
+
+### Missions
+
+Allows replay any story missions and combat tours
+
+
+### Level Select
+
+Allows to load specific levels. The default level is 'city'
+
+
+### Hero Select
 
 Allows to switch between *all* available characters
 
 **NOTE**: `peter_parker` and `peter_hooded` are versions of peter without powers, used in the first missions of the game
 
-### Options
+### Game
 
 Allows to modify in-game flags that controls certain behaviours
 
+### Devopt
+
+Allows to modify Devopt that controls certain behaviours
+
 * Live in Glass House: disables the `Area unavailable` messages
+
+### Devopt
+
+Allows to modify Devopt that controls certain behaviours
+
+* Live in Glass House: disables the `Area unavailable` messages
+
 
 ### Script
 
