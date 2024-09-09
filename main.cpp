@@ -327,6 +327,7 @@ void aeps_RenderAll() {
 	aeps_RenderAll_orig();
 }
 int debug_enabled = 0;
+int debug_disabled = 0;
 
 uint32_t keys[256];
 
@@ -399,7 +400,7 @@ void render_current_debug_menu() {
 
 	nglInitQuad(&quad);
 	nglSetQuadRect(&quad, menu_x_start, menu_y_start, menu_x_start + debug_width + menu_x_pad, menu_y_start + debug_height + menu_y_pad);
-	nglSetQuadColor(&quad, 0xBE0A0A0A);
+        nglSetQuadColor(&quad, 0xC8141414);
 	nglSetQuadZ(&quad, 0.5f);
 	nglListAddQuad(&quad);
 
@@ -437,10 +438,93 @@ void render_current_debug_menu() {
 	}
 }
 
+void render_current_debug_menu2()
+{
+    auto UP_ARROW { " ^ ^ ^ " };
+    auto DOWN_ARROW { " v v v " };
+
+    int num_elements = std::min((DWORD)MAX_ELEMENTS_PAGE, current_menu->used_slots - current_menu->window_start);
+    int needs_down_arrow = ((current_menu->window_start + MAX_ELEMENTS_PAGE) < current_menu->used_slots) ? 1 : 0;
+
+    int cur_width, cur_height;
+    int debug_width = 0;
+    int debug_height = 0;
+
+    auto get_and_update = [&](auto* x) {
+        getStringDimensions(x, &cur_width, &cur_height);
+        debug_height += cur_height;
+        debug_width = std::max(debug_width, cur_width);
+    };
+
+    // printf("new size: %s %d %d (%d %d)\n", x, debug_width, debug_height, cur_width, cur_height);
+
+    get_and_update(current_menu->title);
+    get_and_update(UP_ARROW);
+
+    int total_elements_page = needs_down_arrow ? MAX_ELEMENTS_PAGE : current_menu->used_slots - current_menu->window_start;
+
+    for (int i = 0; i < total_elements_page; ++i) {
+        debug_menu_entry* entry = &current_menu->entries[current_menu->window_start + i];
+        auto cur = getRealText(entry);
+        get_and_update(cur.c_str());
+    }
+
+    if (needs_down_arrow) {
+        get_and_update(DOWN_ARROW);
+    }
+
+    nglQuad quad;
+
+    int menu_x_start = 20, menu_y_start = 40;
+    int menu_x_pad = 24, menu_y_pad = 18;
+
+    nglInitQuad(&quad);
+    nglSetQuadRect(&quad, menu_x_start, menu_y_start, menu_x_start + debug_width + menu_x_pad, menu_y_start + debug_height + menu_y_pad);
+    nglSetQuadColor(&quad, 0x68141414);
+    nglSetQuadZ(&quad, 0.5f);
+    nglListAddQuad(&quad);
+
+    int white_color = nglColor(255, 255, 255, 255);
+    int yellow_color = nglColor(255, 255, 0, 255);
+    int green_color = nglColor(0, 255, 0, 255);
+    int pink_color = nglColor(255, 0, 255, 255);
+
+    int render_height = menu_y_start;
+    render_height += 12;
+    int render_x = menu_x_start;
+    render_x += 8;
+    nglListAddString(nglSysFont(), render_x, render_height, 0.2f, green_color, 1.f, 1.f, current_menu->title);
+    render_height += getStringHeight(current_menu->title);
+
+    if (current_menu->window_start) {
+        nglListAddString(*nglSysFont, render_x, render_height, 0.2f, pink_color, 1.f, 1.f, UP_ARROW);
+    }
+
+    render_height += getStringHeight(UP_ARROW);
+
+    for (int i = 0; i < total_elements_page; i++) {
+
+        int current_color = current_menu->cur_index == i ? yellow_color : white_color;
+
+        debug_menu_entry* entry = &current_menu->entries[current_menu->window_start + i];
+        auto cur = getRealText(entry);
+        nglListAddString(*nglSysFont, render_x, render_height, 0.2f, current_color, 1.f, 1.f, cur.c_str());
+        render_height += getStringHeight(cur.c_str());
+    }
+
+    if (needs_down_arrow) {
+        nglListAddString(*nglSysFont, render_x, render_height, 0.2f, pink_color, 1.f, 1.f, DOWN_ARROW);
+        render_height += getStringHeight(DOWN_ARROW);
+    }
+}
+
 void myDebugMenu() {
 	if (debug_enabled) {
 		render_current_debug_menu();
 	}
+        if (debug_disabled) {
+            render_current_debug_menu2();
+        }
 
 	nglListEndScene();
 }
@@ -1079,20 +1163,132 @@ void create_missions_menu(debug_menu* parent)
     parent->add_entry(v2);
 }
 
+void disable_physics()
+{
+    debug_enabled = 1;
+    game_unpause(g_game_ptr());
+    current_menu = current_menu;
+    g_game_ptr()->enable_physics(false);
+}
+
+void enable_physics()
+{
+    debug_disabled = 1;
+    game_unpause(g_game_ptr());
+    current_menu = current_menu;
+    g_game_ptr()->enable_physics(true);
+}
+
+void custom()
+{
+    debug_disabled = 1;
+    game_unpause(g_game_ptr());
+    current_menu = current_menu;
+    !os_developer_options::instance()->get_flag("ENABLE_ZOOM_MAP");
+    spider_monkey::is_running();
+    g_game_ptr()->enable_physics(false);
+}
+
+
 void menu_setup(int game_state, int keyboard) {
 
 	//debug menu stuff
 	if (is_menu_key_pressed(MENU_R3, keyboard) && (game_state == 6 || game_state == 7)) {
 
-		if (debug_enabled && game_state == 7) {
-			game_unpause(g_game_ptr());
-			debug_enabled = !debug_enabled;
-		}
-		else if (!debug_enabled && game_state == 6) {
-			game_pause(g_game_ptr());
-			debug_enabled = !debug_enabled;
-			current_menu = debug_menu::root_menu;
-		}
+        if (!debug_enabled && game_state == 6) {
+                game_unpause(g_game_ptr());
+                debug_enabled = !debug_enabled;
+                current_menu = debug_menu::root_menu;
+                custom();
+            }
+
+            else if (!debug_disabled && game_state == 6) {
+                game_unpause(g_game_ptr());
+                debug_disabled = !debug_disabled;
+                current_menu = current_menu;
+                disable_physics();
+
+            }
+
+            else if (!debug_enabled && game_state == 6) {
+                game_unpause(g_game_ptr());
+                debug_enabled = !debug_enabled;
+                current_menu = current_menu;
+                disable_physics();
+
+            }
+
+            else if (!debug_enabled, debug_disabled && game_state == 6) {
+                game_unpause(g_game_ptr());
+                debug_disabled, debug_enabled = !debug_disabled, debug_enabled;
+                current_menu = current_menu;
+                enable_physics();
+            }
+        }
+
+        if (is_menu_key_pressed(MENU_R3, keyboard) && (game_state == 6 || game_state == 7)) {
+
+            if (!debug_enabled && game_state == 7) {
+                game_unpause(g_game_ptr());
+                debug_enabled = !debug_enabled;
+                current_menu = debug_menu::root_menu;
+                disable_physics();
+
+            }
+
+            else if (!debug_disabled && game_state == 7) {
+                game_unpause(g_game_ptr());
+                debug_disabled = !debug_disabled;
+                current_menu = current_menu;
+                disable_physics();
+
+            }
+
+            else if (!debug_enabled && game_state == 7) {
+                game_unpause(g_game_ptr());
+                debug_enabled = !debug_enabled;
+                current_menu = current_menu;
+                disable_physics();
+
+            }
+
+            else if (!debug_enabled, debug_disabled && game_state == 7) {
+                game_unpause(g_game_ptr());
+                debug_disabled, debug_enabled = !debug_disabled, debug_enabled;
+                current_menu = current_menu;
+                enable_physics();
+            }
+
+            if (!debug_enabled && game_state == 7) {
+                game_unpause(g_game_ptr());
+                debug_enabled = !debug_enabled;
+                current_menu = debug_menu::root_menu;
+                disable_physics();
+
+            }
+
+            else if (!debug_disabled && game_state == 7) {
+                game_unpause(g_game_ptr());
+                debug_disabled = !debug_disabled;
+                current_menu = current_menu;
+                disable_physics();
+
+            }
+
+            else if (!debug_enabled && game_state == 7) {
+                game_unpause(g_game_ptr());
+                debug_enabled = !debug_enabled;
+                current_menu = current_menu;
+                disable_physics();
+
+            }
+
+            else if (!debug_enabled, debug_disabled && game_state == 7) {
+                game_unpause(g_game_ptr());
+                debug_disabled, debug_enabled = !debug_disabled, debug_enabled;
+                current_menu = current_menu;
+                enable_physics();
+            }
 
 
 
@@ -1510,10 +1706,14 @@ void install_patches()
 	*/
 }
 
-void close_debug() {
-	debug_enabled = 0;
-	game_unpause(g_game_ptr());
+void close_debug()
+{
+    debug_enabled = 0;
+    debug_disabled = 0;
+    game_unpause(g_game_ptr());
+    g_game_ptr()->enable_physics(true);
 }
+
 
 void handle_debug_entry(debug_menu_entry* entry, custom_key_type) {
 	current_menu = entry->m_value.p_menu;
@@ -1528,6 +1728,1139 @@ void debug_menu_enabled()
     debug_enabled = 1;
     game_unpause(g_game_ptr());
     g_game_ptr()->enable_physics(true);
+}
+
+
+void handle_devopt_entry(debug_menu_entry* entry, custom_key_type key_type)
+{
+    printf("handle_game_entry = %s, %s, entry_type = %s\n", entry->text, to_string(key_type), to_string(entry->entry_type));
+
+    if (key_type == ENTER) {
+        switch (entry->entry_type) {
+        case UNDEFINED: {
+            if (entry->m_game_flags_handler != nullptr) {
+                entry->m_game_flags_handler(entry);
+            }
+            break;
+        }
+        case BOOLEAN_E:
+        case POINTER_BOOL: {
+            auto v3 = entry->get_bval();
+            entry->set_bval(!v3, true);
+            break;
+        }
+        case POINTER_MENU: {
+            if (entry->m_value.p_menu != nullptr) {
+                current_menu = entry->m_value.p_menu;
+            }
+            return;
+        }
+        default:
+            break;
+        }
+    } else if (key_type == LEFT) {
+        entry->on_change(-1.0, false);
+        auto v3 = entry->get_bval();
+        entry->set_bval(!v3, true);
+    } else if (key_type == RIGHT) {
+        entry->on_change(1.0, true);
+        auto v3 = entry->get_bval();
+        entry->set_bval(!v3, true);
+    }
+}
+
+ 
+
+typedef void (*us_lighting_switch_time_of_day_ptr)(int time_of_day);
+us_lighting_switch_time_of_day_ptr us_lighting_switch_time_of_day = (us_lighting_switch_time_of_day_ptr)0x00408790;
+
+
+
+
+void devopt_ints_handler(debug_menu_entry* a1)
+{
+    switch (a1->get_id()) {
+    case 0u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "DIFFICULTY" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "DIFFICULTY" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 1u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "CAMERA_STYLE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "CAMERA_STYLE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 2u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "CAMERA_STATE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "CAMERA_STATE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 3u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "CAMERA_FOV" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "CAMERA_FOV" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 4u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "FOG_RED" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "FOG_RED" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 5u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "FOG_GREEN" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "FOG_GREEN" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 6u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "FOG_BLUE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "FOG_BLUE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 7u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "FOG_DISTANCE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString {"FOG_DISTANCE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 8u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "BIT_DEPTH" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "BIT_DEPTH" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 9u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "MONKEY_MODE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "MONKEY_MODE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 10u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "RANDOM_SEED" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "RANDOM_SEED" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 11u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "FORCE_WIN" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "FORCE_WIN" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 12u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "CONTROLLER_TYPE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "CONTROLLER_TYPE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 13u: // Show Districts
+    {
+        debug_menu::hide();
+        switch (a1->get_ival()) {
+        case 0u:
+            os_developer_options::instance()->set_int(mString { "FRAME_LOCK" }, -1.0);
+            break;
+        case 1u:
+            os_developer_options::instance()->set_int(mString { "FRAME_LOCK" }, 0.0);
+            break;
+        case 2u:
+            os_developer_options::instance()->set_int(mString { "FRAME_LOCK" }, 1.0);
+            break;
+        case 3u:
+            os_developer_options::instance()->set_int(mString { "FRAME_LOCK" }, 2.0);
+            break;
+            }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 14u: // Show Districts
+    {
+        debug_menu::hide();
+        limited_timer_base local_timer;
+        limited_timer_base total_timer;
+        if (os_developer_options::instance()->get_int(mString { "FRAME_LIMIT" })) {
+            while (local_timer.elapsed() < 0.033333335) {
+                ;
+            }
+        }
+
+        app::instance()->m_game->field_278 = total_timer.elapsed();
+        app::instance()->m_game->field_280 = 0;
+
+    
+
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+    }
+
+    case 15u: // Show Districts
+    {
+
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "SWING_DEBUG_TRAILS" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "SWING_DEBUG_TRAILS" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 16u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "SOAK_SMOKE"  },a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "SOAK_SMOKE"  }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 17u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "FAR_CLIP_PLANE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString {  "FAR_CLIP_PLANE"  }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 18u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "POI_DISPLAY_TYPE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "POI_DISPLAY_TYPE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 19u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "STORY_MISSION" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString {  "STORY_MISSION" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 20u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "EXEC_DELAY" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "EXEC_DELAY" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 21u: // Show Districts
+    {
+
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "RUN_LENGTH" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "RUN_LENGTH" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 22u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "PC_WINDOW_TOP" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString {  "PC_WINDOW_TOP" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 23u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "PC_WINDOW_LEFT" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "PC_WINDOW_LEFT" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 24u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "PC_WINDOW_WIDTH" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "PC_WINDOW_WIDTH" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 25u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString {"PC_WINDOW_HEIGHT" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "PC_WINDOW_HEIGHT" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 26u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "ALLOW_SCREENSHOT" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "ALLOW_SCREENSHOT" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 27u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "AMALGA_REFRESH_INTERVAL" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "AMALGA_REFRESH_INTERVAL" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 28u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "ENABLE_LONG_MALOR_ASSERTS" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "ENABLE_LONG_MALOR_ASSERTS" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 29u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "GOD_MODE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "GOD_MODE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 30u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString {  "PCLISTBUFFER" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString {  "PCLISTBUFFER" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 31u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "PCSCRATCHBUFFER" },a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "PCSCRATCHBUFFER"  }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 32u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "PCSCRATCHINDEXBUFFER" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "PCSCRATCHINDEXBUFFER" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 33u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "PCSCRATCHVERTEXBUFFER" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "PCSCRATCHVERTEXBUFFER" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 34u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString {  "NAL_HEAP_SIZE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString {  "NAL_HEAP_SIZE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 35u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString {  "ASSERT_BOX_MARGIN" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString {  "ASSERT_BOX_MARGIN" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 36u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "ASSERT_TEXT_MARGIN" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "ASSERT_TEXT_MARGIN" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 37u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString {  "ASSERT_FONT_PCT_X" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString {  "ASSERT_FONT_PCT_X" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 38u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString {  "ASSERT_FONT_PCT_Y" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString {  "ASSERT_FONT_PCT_Y" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 39u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "STREAMER_INFO_FONT_PCT" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString {  "STREAMER_INFO_FONT_PCT" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 40u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "DEBUG_INFO_FONT_PCT" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString {  "DEBUG_INFO_FONT_PCT" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 41u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "PITCH_FACTOR" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "PITCH_FACTOR" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 42u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "BANK_FACTOR" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "BANK_FACTOR" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 43u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "SWING_INTERPOLATION_TIME" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "SWING_INTERPOLATION_TIME" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 44u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "BOTH_HANDS_INTERPOLATION_TIME" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "BOTH_HANDS_INTERPOLATION_TIME" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 45u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "MEM_DUMP_FRAME" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "MEM_DUMP_FRAME" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 46u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "HERO_START_X" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "HERO_START_X" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 47u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "HERO_START_Y" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "HERO_START_Y" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 48u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "HERO_START_Z" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "HERO_START_Z" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 49u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "SHOW_SOUND_INFO" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "SHOW_SOUND_INFO" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 50u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "SHOW_VOICE_BOX_INFO" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "SHOW_VOICE_BOX_INFO" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 51u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "DEBUG_CAMERA_PITCH_MULTIPLIER" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "DEBUG_CAMERA_PITCH_MULTIPLIER" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 52u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "DEBUG_CAMERA_YAW_MULTIPLIER" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "DEBUG_CAMERA_YAW_MULTIPLIER" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 53u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "DEBUG_CAMERA_MOVE_MULTIPLIER" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "DEBUG_CAMERA_MOVE_MULTIPLIER" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 54u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "DEBUG_CAMERA_STRAFE_MULTIPLIER" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString {"DEBUG_CAMERA_STRAFE_MULTIPLIER" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 55u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "TAM_SCALE_MIN_DISTANCE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "TAM_SCALE_MIN_DISTANCE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 56u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString {"TAM_SCALE_MAX_DISTANCE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "TAM_SCALE_MAX_DISTANCE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 57u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "TAM_SCALE_MIN_PERCENT" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "TAM_SCALE_MIN_PERCENT" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 58u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "THUG_HEALTH_UI_SCALE_MIN_DISTANCE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "THUG_HEALTH_UI_SCALE_MIN_DISTANCE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 59u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "THUG_HEALTH_UI_SCALE_MAX_DISTANCE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "THUG_HEALTH_UI_SCALE_MAX_DISTANCE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 60u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "THUG_HEALTH_UI_SCALE_MIN_PERCENT" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "THUG_HEALTH_UI_SCALE_MIN_PERCENT" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 61u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "TARGETING_RETICLE_SCALE_MIN_DISTANCE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "TARGETING_RETICLE_SCALE_MIN_DISTANCE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 62u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "TARGETING_RETICLE_SCALE_MAX_DISTANCE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "TARGETING_RETICLE_SCALE_MAX_DISTANCE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 63u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "TARGETING_RETICLE_SCALE_MIN_PERCENT" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "TARGETING_RETICLE_SCALE_MIN_PERCENT" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 64u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "HIRES_SCREENSHOT_X" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "HIRES_SCREENSHOT_X" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 65u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "HIRES_SCREENSHOT_Y" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "HIRES_SCREENSHOT_Y" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 66u: // Show Districts
+    {
+        debug_menu::hide();
+        DWORD currentTOD = *g_TOD;
+        switch (a1->get_ival()) {
+        case 0u:
+            us_lighting_switch_time_of_day(modulo(currentTOD - 1, 4));
+            break;
+        case 1u:
+            us_lighting_switch_time_of_day(modulo(currentTOD + 1, 4));
+            break;
+        case 2u:
+            us_lighting_switch_time_of_day(modulo(currentTOD + 2, 4));
+            break;
+        case 3u:
+            us_lighting_switch_time_of_day(modulo(currentTOD + 3, 4));
+            break;
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 67u: // Show Districts
+    {
+        debug_menu::hide();
+        switch (a1->get_ival()) {
+        case 0u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 50);
+            break;
+        case 1u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 100);
+            break;
+        case 2u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 150);
+            break;
+        case 3u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 200);
+            break;
+        case 4u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 250);
+            break;
+        case 5u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 300);
+            break;
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 68u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "RTDT_REPLAY_BUFFER_SIZE" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "RTDT_REPLAY_BUFFER_SIZE" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 69u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "TIMER_WIDGET_TIME_DELTA_PERCENT" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString {"TIMER_WIDGET_TIME_DELTA_PERCENT" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 70u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "DEBUG_PARTICLE_LEVEL" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "DEBUG_PARTICLE_LEVEL" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 71u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "DEBUG_PARTICLE_MEMORY" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "DEBUG_PARTICLE_MEMORY" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 72u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "MAX_AEPS_ENTITIES" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "MAX_AEPS_ENTITIES" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+
+    case 73u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "MAX_AEPS_SPAWNERS" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "MAX_AEPS_SPAWNERS" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 74u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "MAX_AEPS_EMITTERS" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "MAX_AEPS_EMITTERS" }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    case 75u: // Show Districts
+    {
+        debug_menu::hide();
+        os_developer_options::instance()->set_int(mString { "MAX_AEPS_PARTICLES" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString {  "MAX_AEPS_PARTICLES"  }, true);
+        }
+        debug_menu_enabled();
+        // TODO
+        // sub_66C242(&g_game_ptr->field_4C);
+        break;
+    }
+    }
 }
 
 void devopt_flags_handler(debug_menu_entry* a1)
@@ -2816,7 +4149,7 @@ void devopt_flags_handler(debug_menu_entry* a1)
         debug_menu::hide();
         switch (a1->get_bval()) {
         case 0u:
-            os_developer_options::instance()->set_flag(mString { "SHOW_BAR_OF_SHAME" },false);
+            os_developer_options::instance()->set_flag(mString { "SHOW_BAR_OF_SHAME" }, false);
             break;
         case 1u:
             os_developer_options::instance()->set_flag(mString { "SHOW_BAR_OF_SHAME" }, true);
@@ -3601,1137 +4934,6 @@ void devopt_flags_handler(debug_menu_entry* a1)
     }
 }
 
-void handle_devopt_entry(debug_menu_entry* entry, custom_key_type key_type)
-{
-    printf("handle_game_entry = %s, %s, entry_type = %s\n", entry->text, to_string(key_type), to_string(entry->entry_type));
-
-    if (key_type == ENTER) {
-        switch (entry->entry_type) {
-        case UNDEFINED: {
-            if (entry->m_game_flags_handler != nullptr) {
-                entry->m_game_flags_handler(entry);
-            }
-            break;
-        }
-        case BOOLEAN_E:
-        case POINTER_BOOL: {
-            auto v3 = entry->get_bval();
-            entry->set_bval(!v3, true);
-            break;
-        }
-        case POINTER_MENU: {
-            if (entry->m_value.p_menu != nullptr) {
-                current_menu = entry->m_value.p_menu;
-            }
-            return;
-        }
-        default:
-            break;
-        }
-    } else if (key_type == LEFT) {
-        entry->on_change(-1.0, false);
-        auto v3 = entry->get_bval();
-        entry->set_bval(!v3, true);
-    } else if (key_type == RIGHT) {
-        entry->on_change(1.0, true);
-        auto v3 = entry->get_bval();
-        entry->set_bval(!v3, true);
-    }
-}
-
- 
-
-typedef void (*us_lighting_switch_time_of_day_ptr)(int time_of_day);
-us_lighting_switch_time_of_day_ptr us_lighting_switch_time_of_day = (us_lighting_switch_time_of_day_ptr)0x00408790;
-
-
-
-
-void devopt_ints_handler(debug_menu_entry* a1)
-{
-    switch (a1->get_id()) {
-    case 0u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "DIFFICULTY" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "DIFFICULTY" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 1u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "CAMERA_STYLE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "CAMERA_STYLE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 2u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "CAMERA_STATE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "CAMERA_STATE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 3u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "CAMERA_FOV" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "CAMERA_FOV" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 4u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "FOG_RED" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "FOG_RED" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 5u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "FOG_GREEN" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "FOG_GREEN" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 6u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "FOG_BLUE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "FOG_BLUE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 7u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "FOG_DISTANCE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString {"FOG_DISTANCE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 8u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "BIT_DEPTH" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "BIT_DEPTH" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 9u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "MONKEY_MODE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "MONKEY_MODE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 10u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "RANDOM_SEED" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "RANDOM_SEED" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 11u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "FORCE_WIN" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "FORCE_WIN" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 12u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "CONTROLLER_TYPE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "CONTROLLER_TYPE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 13u: // Show Districts
-    {
-        debug_menu::hide();
-        switch (a1->get_ival()) {
-        case 0u:
-            os_developer_options::instance()->set_int(mString { "FRAME_LOCK" }, -1.0);
-            break;
-        case 1u:
-            os_developer_options::instance()->set_int(mString { "FRAME_LOCK" }, 0.0);
-            break;
-        case 2u:
-            os_developer_options::instance()->set_int(mString { "FRAME_LOCK" }, 1.0);
-            break;
-        case 3u:
-            os_developer_options::instance()->set_int(mString { "FRAME_LOCK" }, 2.0);
-            break;
-            }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 14u: // Show Districts
-    {
-        debug_menu::hide();
-        limited_timer_base local_timer;
-        limited_timer_base total_timer;
-        if (os_developer_options::instance()->get_int(mString { "FRAME_LIMIT" })) {
-            while (local_timer.elapsed() < 0.033333335) {
-                ;
-            }
-        }
-
-        app::instance()->m_game->field_278 = total_timer.elapsed();
-        app::instance()->m_game->field_280 = 0;
-
-    
-
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-    }
-
-    case 15u: // Show Districts
-    {
-
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "SWING_DEBUG_TRAILS" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "SWING_DEBUG_TRAILS" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 16u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "SOAK_SMOKE"  },a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "SOAK_SMOKE"  }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 17u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "FAR_CLIP_PLANE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString {  "FAR_CLIP_PLANE"  }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 18u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "POI_DISPLAY_TYPE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "POI_DISPLAY_TYPE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 19u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "STORY_MISSION" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString {  "STORY_MISSION" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 20u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "EXEC_DELAY" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "EXEC_DELAY" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 21u: // Show Districts
-    {
-
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "RUN_LENGTH" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "RUN_LENGTH" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 22u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "PC_WINDOW_TOP" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString {  "PC_WINDOW_TOP" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 23u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "PC_WINDOW_LEFT" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "PC_WINDOW_LEFT" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 24u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "PC_WINDOW_WIDTH" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "PC_WINDOW_WIDTH" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 25u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString {"PC_WINDOW_HEIGHT" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "PC_WINDOW_HEIGHT" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 26u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "ALLOW_SCREENSHOT" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "ALLOW_SCREENSHOT" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 27u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "AMALGA_REFRESH_INTERVAL" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "AMALGA_REFRESH_INTERVAL" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 28u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "ENABLE_LONG_MALOR_ASSERTS" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "ENABLE_LONG_MALOR_ASSERTS" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 29u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "GOD_MODE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "GOD_MODE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 30u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString {  "PCLISTBUFFER" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString {  "PCLISTBUFFER" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 31u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "PCSCRATCHBUFFER" },a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "PCSCRATCHBUFFER"  }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 32u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "PCSCRATCHINDEXBUFFER" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "PCSCRATCHINDEXBUFFER" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 33u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "PCSCRATCHVERTEXBUFFER" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "PCSCRATCHVERTEXBUFFER" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 34u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString {  "NAL_HEAP_SIZE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString {  "NAL_HEAP_SIZE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 35u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString {  "ASSERT_BOX_MARGIN" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString {  "ASSERT_BOX_MARGIN" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 36u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "ASSERT_TEXT_MARGIN" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "ASSERT_TEXT_MARGIN" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 37u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString {  "ASSERT_FONT_PCT_X" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString {  "ASSERT_FONT_PCT_X" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 38u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString {  "ASSERT_FONT_PCT_Y" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString {  "ASSERT_FONT_PCT_Y" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 39u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "STREAMER_INFO_FONT_PCT" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString {  "STREAMER_INFO_FONT_PCT" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 40u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "DEBUG_INFO_FONT_PCT" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString {  "DEBUG_INFO_FONT_PCT" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 41u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "PITCH_FACTOR" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "PITCH_FACTOR" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 42u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "BANK_FACTOR" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "BANK_FACTOR" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 43u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "SWING_INTERPOLATION_TIME" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "SWING_INTERPOLATION_TIME" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 44u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "BOTH_HANDS_INTERPOLATION_TIME" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "BOTH_HANDS_INTERPOLATION_TIME" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 45u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "MEM_DUMP_FRAME" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "MEM_DUMP_FRAME" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 46u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "HERO_START_X" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "HERO_START_X" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 47u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "HERO_START_Y" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "HERO_START_Y" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 48u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "HERO_START_Z" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "HERO_START_Z" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 49u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "SHOW_SOUND_INFO" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "SHOW_SOUND_INFO" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 50u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "SHOW_VOICE_BOX_INFO" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "SHOW_VOICE_BOX_INFO" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 51u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "DEBUG_CAMERA_PITCH_MULTIPLIER" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "DEBUG_CAMERA_PITCH_MULTIPLIER" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 52u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "DEBUG_CAMERA_YAW_MULTIPLIER" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "DEBUG_CAMERA_YAW_MULTIPLIER" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 53u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "DEBUG_CAMERA_MOVE_MULTIPLIER" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "DEBUG_CAMERA_MOVE_MULTIPLIER" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 54u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "DEBUG_CAMERA_STRAFE_MULTIPLIER" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString {"DEBUG_CAMERA_STRAFE_MULTIPLIER" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 55u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "TAM_SCALE_MIN_DISTANCE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "TAM_SCALE_MIN_DISTANCE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 56u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString {"TAM_SCALE_MAX_DISTANCE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "TAM_SCALE_MAX_DISTANCE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 57u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "TAM_SCALE_MIN_PERCENT" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "TAM_SCALE_MIN_PERCENT" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 58u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "THUG_HEALTH_UI_SCALE_MIN_DISTANCE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "THUG_HEALTH_UI_SCALE_MIN_DISTANCE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 59u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "THUG_HEALTH_UI_SCALE_MAX_DISTANCE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "THUG_HEALTH_UI_SCALE_MAX_DISTANCE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 60u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "THUG_HEALTH_UI_SCALE_MIN_PERCENT" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "THUG_HEALTH_UI_SCALE_MIN_PERCENT" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 61u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "TARGETING_RETICLE_SCALE_MIN_DISTANCE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "TARGETING_RETICLE_SCALE_MIN_DISTANCE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 62u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "TARGETING_RETICLE_SCALE_MAX_DISTANCE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "TARGETING_RETICLE_SCALE_MAX_DISTANCE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 63u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "TARGETING_RETICLE_SCALE_MIN_PERCENT" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "TARGETING_RETICLE_SCALE_MIN_PERCENT" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 64u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "HIRES_SCREENSHOT_X" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "HIRES_SCREENSHOT_X" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 65u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "HIRES_SCREENSHOT_Y" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "HIRES_SCREENSHOT_Y" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 66u: // Show Districts
-    {
-        debug_menu::hide();
-        DWORD currentTOD = *g_TOD;
-        switch (a1->get_ival()) {
-        case 0u:
-            us_lighting_switch_time_of_day(modulo(currentTOD - 1, 4));
-            break;
-        case 1u:
-            us_lighting_switch_time_of_day(modulo(currentTOD + 1, 4));
-            break;
-        case 2u:
-            us_lighting_switch_time_of_day(modulo(currentTOD + 2, 4));
-            break;
-        case 3u:
-            us_lighting_switch_time_of_day(modulo(currentTOD + 3, 4));
-            break;
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 67u: // Show Districts
-    {
-        debug_menu::hide();
-        switch (a1->get_ival()) {
-        case 0u:
-            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 50);
-            break;
-        case 1u:
-            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 100);
-            break;
-        case 2u:
-            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 150);
-            break;
-        case 3u:
-            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 200);
-            break;
-        case 4u:
-            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 250);
-            break;
-        case 5u:
-            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 300);
-            break;
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 68u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "RTDT_REPLAY_BUFFER_SIZE" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "RTDT_REPLAY_BUFFER_SIZE" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 69u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "TIMER_WIDGET_TIME_DELTA_PERCENT" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString {"TIMER_WIDGET_TIME_DELTA_PERCENT" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 70u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "DEBUG_PARTICLE_LEVEL" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "DEBUG_PARTICLE_LEVEL" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 71u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "DEBUG_PARTICLE_MEMORY" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "DEBUG_PARTICLE_MEMORY" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 72u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "MAX_AEPS_ENTITIES" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "MAX_AEPS_ENTITIES" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-
-    case 73u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "MAX_AEPS_SPAWNERS" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "MAX_AEPS_SPAWNERS" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 74u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "MAX_AEPS_EMITTERS" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString { "MAX_AEPS_EMITTERS" }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    case 75u: // Show Districts
-    {
-        debug_menu::hide();
-        os_developer_options::instance()->set_int(mString { "MAX_AEPS_PARTICLES" }, a1->get_ival());
-
-        if (a1->get_ival()) {
-            os_developer_options::instance()->set_int(mString {  "MAX_AEPS_PARTICLES"  }, true);
-        }
-        debug_menu_enabled();
-        // TODO
-        // sub_66C242(&g_game_ptr->field_4C);
-        break;
-    }
-    }
-}
 
 void create_devopt_menu(debug_menu* parent)
 {
@@ -4743,15 +4945,15 @@ void create_devopt_menu(debug_menu* parent)
 
     auto* v10 = parent;
 
-     debug_menu_entry v90 = (mString { "CD_ONLY" });
-     v90.set_bval(false);
-     v90.set_game_flags_handler(devopt_flags_handler);
-     v90.set_id(0);
+
+
+    debug_menu_entry v90 = (mString { "CD_ONLY" });
+    v90.set_bval(false);
+    v90.set_game_flags_handler(devopt_flags_handler);
+    v90.set_id(0);
     v10->add_entry(&v90);
 
-
     // v92->add_entry(&v90);
-
 
     v90 = debug_menu_entry(mString { "ENVMAP_TOOL" });
     v90.set_bval(false);
@@ -5648,7 +5850,7 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_id(149);
     add_debug_menu_entry(devopt_menu, &v90);
 
-// INTS
+    // INTS
 
     v90 = debug_menu_entry { mString { "DIFFICULTY" } };
     v90.set_ival(0);
@@ -5657,8 +5859,6 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_game_flags_handler(devopt_ints_handler);
     v90.set_id(0);
     add_debug_menu_entry(devopt_menu, &v90);
-
-
 
     v90 = debug_menu_entry { mString { "CAMERA_STYLE" } };
     v90.set_ival(0);
@@ -5684,7 +5884,7 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_id(3);
     add_debug_menu_entry(devopt_menu, &v90);
 
-    v90 = debug_menu_entry { mString {"FOG_RED" } };
+    v90 = debug_menu_entry { mString { "FOG_RED" } };
     v90.set_ival(0);
     v90.set_min_value(-1000.0);
     v90.set_max_value(1000.0);
@@ -5708,7 +5908,6 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_id(6);
     add_debug_menu_entry(devopt_menu, &v90);
 
-    
     v90 = debug_menu_entry { mString { "FOG_DISTANCE" } };
     v90.set_ival(0);
     v90.set_min_value(-1000.0);
@@ -5749,7 +5948,7 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_id(11);
     add_debug_menu_entry(devopt_menu, &v90);
 
-    v90 = debug_menu_entry { mString {"CONTROLLER_TYPE" } };
+    v90 = debug_menu_entry { mString { "CONTROLLER_TYPE" } };
     v90.set_ival(0);
     v90.set_min_value(-1000.0);
     v90.set_max_value(1000.0);
@@ -5781,7 +5980,7 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_id(15);
     add_debug_menu_entry(devopt_menu, &v90);
 
-    v90 = debug_menu_entry { mString {"SOAK_SMOKE" } };
+    v90 = debug_menu_entry { mString { "SOAK_SMOKE" } };
     v90.set_ival(0);
     v90.set_min_value(-1000.0);
     v90.set_max_value(1000.0);
@@ -5917,7 +6116,7 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_id(32);
     add_debug_menu_entry(devopt_menu, &v90);
 
-    v90 = debug_menu_entry { mString {"PCSCRATCHVERTEXBUFFER" } };
+    v90 = debug_menu_entry { mString { "PCSCRATCHVERTEXBUFFER" } };
     v90.set_ival(0);
     v90.set_min_value(-1000.0);
     v90.set_max_value(1000.0);
@@ -5941,7 +6140,7 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_id(35);
     add_debug_menu_entry(devopt_menu, &v90);
 
-    v90 = debug_menu_entry { mString {"ASSERT_TEXT_MARGIN" } };
+    v90 = debug_menu_entry { mString { "ASSERT_TEXT_MARGIN" } };
     v90.set_ival(0);
     v90.set_min_value(-1000.0);
     v90.set_max_value(1000.0);
@@ -6021,7 +6220,7 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_id(45);
     add_debug_menu_entry(devopt_menu, &v90);
 
-    v90 = debug_menu_entry { mString {"HERO_START_X" } };
+    v90 = debug_menu_entry { mString { "HERO_START_X" } };
     v90.set_ival(0);
     v90.set_min_value(-1000.0);
     v90.set_max_value(1000.0);
@@ -6061,7 +6260,7 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_id(50);
     add_debug_menu_entry(devopt_menu, &v90);
 
-    v90 = debug_menu_entry { mString {"DEBUG_CAMERA_PITCH_MULTIPLIER" } };
+    v90 = debug_menu_entry { mString { "DEBUG_CAMERA_PITCH_MULTIPLIER" } };
     v90.set_ival(0);
     v90.set_min_value(-1000.0);
     v90.set_max_value(1000.0);
@@ -6093,7 +6292,7 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_id(54);
     add_debug_menu_entry(devopt_menu, &v90);
 
-    v90 = debug_menu_entry { mString {"TAM_SCALE_MIN_DISTANCE" } };
+    v90 = debug_menu_entry { mString { "TAM_SCALE_MIN_DISTANCE" } };
     v90.set_ival(0);
     v90.set_min_value(-1000.0);
     v90.set_max_value(1000.0);
@@ -6133,7 +6332,7 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_id(59);
     add_debug_menu_entry(devopt_menu, &v90);
 
-    v90 = debug_menu_entry { mString {"THUG_HEALTH_UI_SCALE_MIN_PERCENT" } };
+    v90 = debug_menu_entry { mString { "THUG_HEALTH_UI_SCALE_MIN_PERCENT" } };
     v90.set_ival(0);
     v90.set_min_value(-1000.0);
     v90.set_max_value(1000.0);
@@ -6181,7 +6380,6 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_id(65);
     add_debug_menu_entry(devopt_menu, &v90);
 
-
     v90 = debug_menu_entry { mString { "TIME_OF_DAY" } };
     v90.set_ival(0);
     v90.set_max_value(3.0);
@@ -6195,7 +6393,6 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_game_flags_handler(devopt_ints_handler);
     v90.set_id(67);
     add_debug_menu_entry(devopt_menu, &v90);
-
 
     v90 = debug_menu_entry { mString { "RTDT_REPLAY_BUFFER_SIZE" } };
     v90.set_ival(0);
@@ -6237,7 +6434,7 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_id(72);
     add_debug_menu_entry(devopt_menu, &v90);
 
-    v90 = debug_menu_entry { mString {"MAX_AEPS_SPAWNERS" } };
+    v90 = debug_menu_entry { mString { "MAX_AEPS_SPAWNERS" } };
     v90.set_ival(0);
     v90.set_min_value(-1000.0);
     v90.set_max_value(1000.0);
@@ -6260,7 +6457,10 @@ void create_devopt_menu(debug_menu* parent)
     v90.set_game_flags_handler(devopt_ints_handler);
     v90.set_id(75);
     add_debug_menu_entry(devopt_menu, &v90);
-}
+        }
+
+
+
 
 
 void create_game_flags_menu(debug_menu* parent)
@@ -6455,7 +6655,7 @@ void create_replay_menu(debug_menu* parent)
 void movie_play_handler(debug_menu_entry* entry)
 {
 
-    if (!movie_manager::load_and_play_movie("DEMO", "DEMO", false)) {
+    if (!movie_manager::load_and_play_movie("Attract", "Attract", false)) {
         close_debug();
     }
 }
