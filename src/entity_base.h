@@ -12,6 +12,9 @@ struct conglomerate;
 struct motion_effect_struct;
 struct sound_and_pfx_interface;
 
+
+
+
 struct entity_base {
     int m_vtbl;
     uint32_t field_4;
@@ -44,6 +47,8 @@ struct entity_base {
     auto get_id() const {
         return this->field_10;
     }
+
+
 };
 
 VALIDATE_SIZE(entity_base, 0x44u);

@@ -86,7 +86,7 @@ struct game {
     int field_54;
     int field_58;
     entity* field_5C;
-    entity_base* current_game_camera;
+    camera* current_game_camera;
     mic* field_64;
     message_board* mb;
     std::vector<game_process> process_stack;
@@ -200,6 +200,41 @@ struct game {
         this->push_process(lores_game_process());
     }
 
+    std::string sub_50F010()
+    {
+
+        void(__fastcall * func)(void*, void*) = (decltype(func))0x0050F010;
+        func(this, nullptr);
+        int curr_char = strlen(g_scene_name()) - 1;
+        if (curr_char > 0) {
+            while (g_scene_name()[curr_char] != '\\') {
+                if (--curr_char <= 0)
+                    goto LABEL_4;
+            }
+            return &g_scene_name()[curr_char + 1];
+        }
+
+    LABEL_4:
+        if (g_scene_name()[curr_char] == '\\')
+            return &g_scene_name()[curr_char + 1];
+        return &g_scene_name()[curr_char];
+    }
+
+
+    void freeze_hero(bool a2)
+    {
+        void(__fastcall * func)(void*, void*, bool) = (decltype(func))0x0514F00;
+        func(this, nullptr, a2);
+    }
+
+
+  void init_motion_blur()
+    {
+
+            void(__fastcall * func)(void*, void*) = (decltype(func))0x0514AB0;
+            func(this, nullptr);
+        
+    }
 
 
 
@@ -220,11 +255,22 @@ struct game {
 
     void advance_state_wait_link(Float a2);
 
+    bool  is_physics_enabled() const;
+ 
+    void load_this_level();
 
-    
+
+    bool is_paused() const;
+
+    void clear_screen();
+   
  void show_max_velocity();
 
  void _load_new_level(const mString& a2);
+
+ 
+bool level_is_loaded() const;
+
 
 
  void load_new_level(const mString& a2, const vector3d& a3);

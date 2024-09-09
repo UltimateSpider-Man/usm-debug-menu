@@ -10,7 +10,45 @@
 #include "keyboard.h"
 #include "game_data_meat.h"
 #include "game_button.h"
+#include "entity.h"
+#include "entity_base.h"
+#include "po.h"
 
+#include "resource_manager.h"
+
+
+
+#include "spider_monkey.h"
+#include "app.h"
+
+#include "base_ai_core.h"
+
+#include "color32.h"
+#include "common.h"
+#include "chuck_callbacks.h"
+
+
+#include "physical_interface.h"
+#include "region.h"
+
+#include "resource_pack_streamer.h"
+#include "resource_partition.h"
+#include "script_manager.h"
+
+#include "slc_manager.h"
+#include "smoke_test.h"
+
+#include "utility.h"
+#include "variables.h"
+#include "vector2di.h"
+#include "vtbl.h"
+#include "wds.h"
+
+#include <cassert>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <numeric>
 
 #include <algorithm>
 
@@ -561,8 +599,8 @@ void game::frame_advance_level(Float time_inc)
 void game::handle_frame_locking(float* a1)
 {
     auto frame_lock = os_developer_options::instance()->get_int(mString { "FRAME_LOCK" });
-    if (frame_lock > 0.5) {
-        *a1 = 1.0 / frame_lock;
+    if (frame_lock > 0.1) {
+        *a1 = 2.0 / frame_lock;
     }
 }
 
@@ -588,6 +626,141 @@ void game::set_camera(int camera_state)
         }
     }
 }
+
+void game::clear_screen()
+{
+
+        CDECL_CALL(0x00515140, this);
+    }
+
+static int& g_mem_checkpoint_level = var<int>(0x00921DC4);
+
+
+void register_chuck_callbacks()
+{
+
+    CDECL_CALL(0x006607E0);
+}
+
+void game::load_this_level()
+{
+    TRACE("game::load_this_level");
+
+    if constexpr (1) {
+        assert(!flag.level_is_loaded);
+
+        this->field_2C0.reset();
+        this->field_15F = false;
+        this->field_15E = false;
+        this->field_160 = false;
+        this->flag.game_paused = false;
+        this->clear_screen();
+        app::instance()->field_38 += 10;
+        mem_print_stats("at beginning of load_this_level()");
+
+        g_mem_checkpoint_level = 0; // mem_set_checkpoint()
+        this->init_motion_blur();
+
+
+        slc_manager::init();
+
+             auto* common_partition = resource_manager::get_partition_pointer(4);
+        assert(common_partition != nullptr);
+
+        assert(common_partition->get_pack_slots().size() == 1);
+
+
+
+        auto* common_slot = common_partition->get_pack_slots().front();
+        assert(common_slot != nullptr);
+
+
+        register_chuck_callbacks();
+        script_manager::init_game_var();
+
+        assert(script_manager::get_total_loaded() == 0);
+
+        resource_key v14 = create_resource_key_from_path("init_gv", 0);
+     {
+            resource_key v69 {};
+
+            resource_key v73 { string_hash { "init_gv" }, 15 };
+            script_manager::load(v73, 0u, common_slot, v69);
+
+            v73 = resource_key { string_hash { "init_sv" }, 15 };
+            script_manager::load(v73, 0u, common_slot, v69);
+
+            script_manager::link();
+            script_manager::run(0.0, false);
+            script_manager::clear();
+            register_chuck_callbacks();
+
+        mString hero_name { this->gamefile->field_340.field_114.to_string() };
+
+        this->the_world->add_player(hero_name);
+
+        po v86;
+
+        if (g_game_ptr()->m_hero_start_enabled) {
+
+
+            auto v73 = os_developer_options::instance()->get_string(os_developer_options::HERO_START_DISTRICT);
+            if (v73) {
+                auto* ter = g_world_ptr()->get_the_terrain();
+                assert(ter != nullptr);
+
+ 
+
+            auto hero_start_x = os_developer_options::instance()->get_int(mString { "HERO_START_X" });
+                auto hero_start_y = os_developer_options::instance()->get_int(mString { "HERO_START_Y" });
+            auto hero_start_z = os_developer_options::instance()->get_int(mString { "HERO_START_Z" });
+
+  
+            auto time = this->field_2C0.elapsed();
+            printf("Post-load-scene load time: %f seconds\n", time);
+        }
+
+
+        this->current_game_camera = this->the_world->get_chase_cam_ptr(0);
+
+        this->set_current_camera(this->the_world->get_chase_cam_ptr(0), true);
+
+
+        if (this->field_16E) {
+            this->freeze_hero(true);
+        }
+
+        spider_monkey::on_level_load();
+        this->level.field_34.reset();
+
+        mem_print_stats("at very end of load_this_level()");
+
+    } else {
+        CDECL_CALL(0x0055C6E0, this);
+    }
+        }
+    }
+}
+
+
+
+
+bool game::is_physics_enabled() const
+{
+    return this->flag.physics_enabled;
+}
+
+bool game::is_paused() const
+{
+    return this->flag.game_paused;
+}
+
+
+bool game::level_is_loaded() const
+{
+    return this->flag.level_is_loaded;
+}
+
 
 inline double sub_A26B70()
 {
@@ -677,6 +850,8 @@ void game::message_board_init()
 {
     this->mb = new message_board {};
 }
+
+
 
 void game::_load_new_level(const mString& a2)
 {

@@ -21,7 +21,7 @@
 
 #include <cassert>
 
-constexpr auto NUM_HEROES = 10u;
+constexpr auto NUM_HEROES = 22u;
 
 const char *hero_list[NUM_HEROES] = {
 		"ultimate_spiderman",
@@ -33,7 +33,19 @@ const char *hero_list[NUM_HEROES] = {
 		"peter_hooded",
 		"peter_hooded_costume",
 		"venom",
-		"venom_spider"
+		"venom_spider",
+        "carnage", 
+        "rhino" , 
+        "electro_suit",
+        "electro_nosuit",
+        "mary_jane",
+        "wolverine",
+        "silver_sable",
+        "beetle",
+        "johnny_storm",
+        "usm_blacksuit",
+        "green_goblin"
+
 	};
 
 enum class hero_status_e {
@@ -109,6 +121,9 @@ void level_select_handler(debug_menu_entry *entry)
 
     g_game_ptr()->load_new_level(v15, -1);
     g_smoke_test()->sub_57B610();
+    g_game_ptr()->sub_50F010();
+    g_game_ptr()->level_is_loaded();
+    g_game_ptr()->load_this_level();
 }
 
 
@@ -125,6 +140,13 @@ void hero_entry_callback(debug_menu_entry *);
 
 void hero_toggle_handler(debug_menu_entry *entry);
 
+
+
+
+
+
+
+
 void create_level_select_menu(debug_menu *level_select_menu)
 {
     //assert(debug_menu::root_menu != nullptr);
@@ -135,7 +157,7 @@ void create_level_select_menu(debug_menu *level_select_menu)
     debug_menu_entry v28 {hero_select_menu};
 
     level_select_menu->add_entry(&v28);
-    for ( auto i = 0u; i < NUM_HEROES; ++i )
+    for ( auto i = 0u; i < 22; ++i )
     {
         auto v6 = 25;
         string_hash v5{hero_list[i]};

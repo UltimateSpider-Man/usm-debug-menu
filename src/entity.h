@@ -57,6 +57,7 @@ struct entity : signaller
         }
     }
 
+
     region * get_primary_region()
     {
         region *(__fastcall *func)(void *) = bit_cast<decltype(func)>(0x004C0760);

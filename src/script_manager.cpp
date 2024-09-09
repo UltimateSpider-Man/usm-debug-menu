@@ -1,4 +1,4 @@
-#include "script_manager.h"
+
 
 #include "chuck_callbacks.h"
 #include "chunk_file.h"
@@ -25,6 +25,24 @@
 #include <list>
 #include <set>
 #include <map>
+
+
+#include "float.hpp"
+
+
+struct mString;
+struct script_var_container;
+struct script_library_class;
+struct resource_key;
+struct script_executable_entry_key;
+struct script_executable_entry;
+struct script_executable;
+struct script_executable_allocated_stuff_record;
+struct script_object;
+struct string_hash;
+struct vm_executable;
+
+enum script_manager_callback_reason {};
 
 #if !STANDALONE_SYSTEM
 auto & script_manager_execs_pending_link_list = var<std::list<script_executable_entry> *>(0x00965EF4);
@@ -157,31 +175,43 @@ int get_total_loaded()
 }
 
 
-
 void link()
 {
     TRACE("script_manager::link");
 
-    if constexpr (1)
-    {
-        for ( auto &entry : (*script_manager_execs_pending_link_list) )
-        {
-            if ( !entry.exec->is_linked() ) {
+    if constexpr (1) {
+        for (auto& entry : (*script_manager_execs_pending_link_list)) {
+            {
                 script_manager::run_callbacks(static_cast<script_manager_callback_reason>(6), entry.exec, entry.field_8);
-                entry.exec->link();
                 script_manager::run_callbacks(static_cast<script_manager_callback_reason>(7), entry.exec, entry.field_8);
-            }
+        }
+   
 
             script_manager_execs_pending_first_run->push_back(entry);
         }
 
         script_manager_execs_pending_link_list->clear();
-    }
-    else
-    {
+    } else {
         CDECL_CALL(0x005A3620);
     }
 }
+
+
+void init_game_var()
+{
+    CDECL_CALL(0x0059EE90);
+}
+
+void clear()
+{
+    CDECL_CALL(0x005B0640);
+}
+
+void run(Float a1, bool a2)
+{
+    CDECL_CALL(0x005AF9F0, a1, a2);
+}
+
 
 int load_game_var_buffer(char *a1)
 {
@@ -216,9 +246,9 @@ bool is_loadable(const resource_key &a1)
 {
     TRACE("script_manager::is_loadable");
 
-    resource_key a1a {a1.m_hash, RESOURCE_KEY_TYPE_SCRIPT};
-    int mash_data_size = 0;
-    return (resource_manager::get_resource(a1a, &mash_data_size, nullptr) != nullptr);
+     CDECL_CALL(0x0058F3A0, a1);
+
+
 }
 
 int register_allocated_stuff_callback(
@@ -259,6 +289,36 @@ void init()
 
 
         CDECL_CALL(0x005AFCE0);
+    }
+
+void clear()
+    {
+        TRACE("script_manager::clear");
+
+        if constexpr (1) {
+            script_manager_time_inc = 0.0;
+            script_manager_master_script = nullptr;
+
+            assert(script_manager_exec_map != nullptr);
+            while (!script_manager_exec_map->empty()) {
+                auto it = script_manager_exec_map->begin();
+                auto* exec = it->second.exec;
+
+
+
+                script_manager_exec_map->erase(it);
+            }
+
+            assert(script_manager_exec_map->size() == 0);
+
+            script_manager_execs_pending_link_list->clear();
+            script_manager_execs_pending_first_run->clear();
+
+            assert(script_manager_callbacks != nullptr);
+            script_manager_callbacks->clear();
+        } else {
+            CDECL_CALL(0x005B0640);
+        }
     }
 
 
@@ -354,21 +414,7 @@ void dump_threads_to_console()
 {
 }
 
-void dump_threads_to_file()
-{
-    TRACE("script_manager::dump_threads_to_file");
 
-    auto *file = host_fopen("scriptdump.txt", 2);
-    fprintf(file, "instance thread time ops\n");
-
-    assert(script_manager_exec_map != nullptr);
-
-    for ( auto &v0 : (*script_manager_exec_map) ) {
-        v0.second.exec->dump_threads_to_file(file);
-    }
-
-    fclose(file);
-}
 
 void run(Float a1, bool a2)
 {
@@ -393,24 +439,37 @@ std::map<script_executable_entry_key, script_executable_entry> *get_exec_list()
 
 
 
+int save_game_var_buffer(char* a1)
+{
+    TRACE("script_manager::save_game_var_buffer");
+    printf("0x%08X", int(a1));
 
+    return CDECL_CALL(0x0058F4C0, a1);
+}
+
+int register_callback(
+    void (*a2)(script_manager_callback_reason, script_executable*, const char*))
+{
+    TRACE("script_manager::register_callback");
+
+    return CDECL_CALL(0x005A3600, a2);
+}
 
 
 
 void init_game_var()
-{
-    TRACE("script_manager::init_game_var");
 
 
+    {
 
         CDECL_CALL(0x0059EE90);
-        }
+    }
+
 
 
 
 void clear()
-{
-    TRACE("script_manager::clear");
+
 
     {
         CDECL_CALL(0x005B0640);
@@ -419,36 +478,8 @@ void clear()
 
 
 
-int save_game_var_buffer(char *a1)
-{
-    TRACE("script_manager::save_game_var_buffer");
-    printf("0x%08X", int(a1));
 
 
-        return CDECL_CALL(0x0058F4C0, a1);
-    }    
-
-
-int register_callback(
-        void (*a2)(script_manager_callback_reason, script_executable *, const char *))
-{
-    TRACE("script_manager::register_callback");
-
-        return CDECL_CALL(0x005A3600, a2);
-    }
-
-
-
-
-void *parse_generic_mash_init_hook(generic_mash_header *&header, void *a2, bool *allocated_mem, generic_mash_data_ptrs *a4, unsigned int struct_size, unsigned int *virtual_table_lookup, unsigned int *size_table_lookup, unsigned int num_table_entries, unsigned int base_class_size, void *a10)
-{
-#ifdef TARGET_XBOX
-    struct_size = 0x60;
-#endif
-
-    return parse_generic_mash_init(header, a2, allocated_mem, a4, struct_size, virtual_table_lookup,
-            size_table_lookup, num_table_entries, base_class_size, a10);
-}
 
 
 

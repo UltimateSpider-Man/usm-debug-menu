@@ -1,6 +1,10 @@
 #pragma once
 
 #include "float.hpp"
+#include "common.h"
+#include "func_wrapper.h"
+
+#include "utility.h"
 
 #include <list>
 #include <map>
@@ -25,69 +29,58 @@ enum script_manager_callback_reason
 {};
 
 namespace script_manager {
-    //0x005A09B0
-    void *get_game_var_address(const mString &a1, bool *a2, script_library_class **a3);
+static void init_game_var()
+{
+    CDECL_CALL(0x0059EE90);
+}
 
-    char *get_game_var_address(int a1);
+static void clear()
+{
+    CDECL_CALL(0x005B0640);
+}
 
-    char *get_shared_var_address(int a1);
+static void run(Float a1, bool a2)
+{
+    CDECL_CALL(0x005AF9F0, a1, a2);
+}
 
-    //0x0058F4C0
-    int save_game_var_buffer(char *a1);
-
-    //0x005AFCE0
-    void init();
-
-    void dump_threads_to_console();
-
-    void dump_threads_to_file();
-
-    //0x005A3620
-    void link();
-
-    //0x005A0AC0
-    void run_callbacks(script_manager_callback_reason a1, script_executable *a2, const char *a3);
-
-    //0x0058F480
-    int load_game_var_buffer(char *a1);
-
-    void un_load(const resource_key &a1, bool a2, const resource_key &a3);
-
-    //0x005B0750
-    script_executable_entry *load(const resource_key &a1, uint32_t a2, void *a3, const resource_key &a4);
-
-    //0x0059EE90
-    void init_game_var();
-
-    //0x0059EE10
-    script_executable_entry *find_entry(const script_executable *a1);
-
-    bool using_chuck_old_fashioned();
-
-    //0x0058F3A0
-    bool is_loadable(const resource_key &a1);
-
-    //0x005A52F0
-    void destroy_game_var();
-
-    //0x005B0640
-    void clear();
-
-    //0x005B0970
-    void kill();
-
-    //0x005AF9F0
-    void run(Float a1, bool a2);
-
-    //0x0059ED70
-    vm_executable *find_function_by_address(const uint16_t *a1);
-
-    //0x0059EDC0
-    vm_executable *find_function_by_name(string_hash a1);
-
-    int get_total_loaded();
+static void link()
+{
+    CDECL_CALL(0x005A3620);
+}
 
 
+
+static bool is_loadable(const resource_key& a1)
+{
+
+    if constexpr (1) {
+            return true;
+        
+
+        {
+              
+            bool* (*func)(const resource_key* a1) = CAST(func, 0x0058F3A0);
+            return func(&a1);
+        }
+    }
+}
+
+
+
+
+
+
+    // 0x005B0750
+static script_executable_entry* load(const resource_key& a1, uint32_t a2, void* a3, const resource_key& a4)
+{
+    script_executable_entry* (*func)(const resource_key* a1, uint32_t a2, void* a3, const resource_key* a4) = CAST(func, 0x005B0750);
+    return func(&a1, a2, a3, &a4);
+}
+
+
+   
+    
 #if !STANDALONE_SYSTEM
     std::map<script_executable_entry_key, script_executable_entry> *get_exec_list();
 #else
@@ -111,7 +104,7 @@ namespace script_manager {
 
     float get_time_inc();
 
-    int register_callback(
+    static int register_callback(
         void (*a2)(script_manager_callback_reason, script_executable *, const char *));
 }
 
