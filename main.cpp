@@ -27,6 +27,7 @@
 #include "src/debug_menu_extra.h"
 #include "src/devopt.h"
 #include "src/debug_menu.h"
+#include "src/debug_struct.h"
 #include "src/entity_animation_menu.h"
 #include "src/game.h"
 #include "src/input_mgr.h"
@@ -56,6 +57,8 @@
 #include "src/variable.h"
 #include "src/wds.h"
 #include "src/app.h"
+#include "src/movie_manager.h"
+#include "src/debugutil.h"
 
 
 DWORD* ai_current_player = nullptr;
@@ -70,6 +73,8 @@ BOOL WINAPI IsEqualGUID(
 	return !memcmp(rguid1, rguid2, sizeof(GUID));
 }
 */
+
+
 
 uint8_t color_ramp_function(float ratio, int period_duration, int cur_time) {
 
@@ -789,7 +794,7 @@ int get_menu_key_value(MenuKey key, int keyboard) {
 		int i = 0;
 		switch (key) {
 			case MENU_R3:
-				i = DIK_INSERT;
+				i = DIK_X;
 				break;
 			case MENU_ACCEPT:
 				i = DIK_RETURN;
@@ -1706,6 +1711,11 @@ void install_patches()
 	*/
 }
 
+    bool equal(float first1, float last1)
+{
+    return 1.0;
+}
+
 void close_debug()
 {
     debug_enabled = 0;
@@ -1958,20 +1968,12 @@ void devopt_ints_handler(debug_menu_entry* a1)
     case 13u: // Show Districts
     {
         debug_menu::hide();
-        switch (a1->get_ival()) {
-        case 0u:
-            os_developer_options::instance()->set_int(mString { "FRAME_LOCK" }, -1.0);
-            break;
-        case 1u:
-            os_developer_options::instance()->set_int(mString { "FRAME_LOCK" }, 0.0);
-            break;
-        case 2u:
-            os_developer_options::instance()->set_int(mString { "FRAME_LOCK" }, 1.0);
-            break;
-        case 3u:
-            os_developer_options::instance()->set_int(mString { "FRAME_LOCK" }, 2.0);
-            break;
-            }
+
+        os_developer_options::instance()->set_int(mString { "FRAME_LOCK" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "FRAME_LOCK" }, true);
+        }
         debug_menu_enabled();
         // TODO
         // sub_66C242(&g_game_ptr->field_4C);
@@ -1980,18 +1982,13 @@ void devopt_ints_handler(debug_menu_entry* a1)
 
     case 14u: // Show Districts
     {
+
         debug_menu::hide();
-        limited_timer_base local_timer;
-        limited_timer_base total_timer;
-        if (os_developer_options::instance()->get_int(mString { "FRAME_LIMIT" })) {
-            while (local_timer.elapsed() < 0.033333335) {
-                ;
-            }
+        os_developer_options::instance()->set_int(mString { "FRAME_LIMIT" }, a1->get_ival());
+
+        if (a1->get_ival()) {
+            os_developer_options::instance()->set_int(mString { "FRAME_LIMIT" }, true);
         }
-
-        app::instance()->m_game->field_278 = total_timer.elapsed();
-        app::instance()->m_game->field_280 = 0;
-
     
 
         debug_menu_enabled();
@@ -2707,15 +2704,19 @@ void devopt_ints_handler(debug_menu_entry* a1)
         DWORD currentTOD = *g_TOD;
         switch (a1->get_ival()) {
         case 0u:
+            os_developer_options::instance()->set_int(mString { "TIME_OF_DAY" }, 0);
             us_lighting_switch_time_of_day(modulo(currentTOD - 1, 4));
             break;
         case 1u:
+            os_developer_options::instance()->set_int(mString { "TIME_OF_DAY" }, 1);
             us_lighting_switch_time_of_day(modulo(currentTOD + 1, 4));
             break;
         case 2u:
+            os_developer_options::instance()->set_int(mString { "TIME_OF_DAY" }, 2);
             us_lighting_switch_time_of_day(modulo(currentTOD + 2, 4));
             break;
         case 3u:
+            os_developer_options::instance()->set_int(mString { "TIME_OF_DAY" }, 3);
             us_lighting_switch_time_of_day(modulo(currentTOD + 3, 4));
             break;
         }
@@ -2733,19 +2734,94 @@ void devopt_ints_handler(debug_menu_entry* a1)
             os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 50);
             break;
         case 1u:
-            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 100);
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 60);
             break;
         case 2u:
-            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 150);
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 70);
             break;
         case 3u:
-            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 200);
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 80);
             break;
         case 4u:
-            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 250);
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 90);
             break;
         case 5u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 100);
+            break;
+        case 6u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 110);
+            break;
+        case 7u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 120);
+            break;
+        case 8u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 130);
+            break;
+        case 9u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 140);
+            break;
+        case 10u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 150);
+            break;
+        case 11u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 160);
+            break;
+        case 12u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 170);
+            break;
+        case 13u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 180);
+            break;
+        case 14u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 190);
+            break;
+        case 15u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 200);
+            break;
+        case 16u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 210);
+            break;
+        case 17u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 220);
+            break;
+        case 18u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 230);
+            break;
+        case 19u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 240);
+            break;
+        case 20u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 250);
+            break;
+        case 21u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 260);
+            break;
+        case 22u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 270);
+            break;
+        case 23u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 280);
+            break;
+        case 24u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 290);
+            break;
+        case 25u:
             os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 300);
+            break;
+        case 26u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 310);
+            break;
+        case 27u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 320);
+            break;
+        case 28u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 330);
+            break;
+        case 29u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 340);
+            break;
+        case 30u:
+            os_developer_options::instance()->set_int(mString { "MINI_MAP_ZOOM" }, 350);
             break;
         }
         debug_menu_enabled();
@@ -4434,6 +4510,7 @@ void devopt_flags_handler(debug_menu_entry* a1)
         if (a1->get_bval()) {
             os_developer_options::instance()->set_flag(mString { "OUTPUT_WARNING_DISABLE" }, true);
         }
+
         debug_menu_enabled();
         // TODO
         // sub_66C242(&g_game_ptr->field_4C);
@@ -4457,10 +4534,20 @@ void devopt_flags_handler(debug_menu_entry* a1)
     case 116u: // Show Districts
     {
         debug_menu::hide();
-        os_developer_options::instance()->set_flag(mString { "ASSERT_ON_WARNING" }, a1->get_bval());
+        const char* arg0;
+        va_list va;
+        va_start(va, arg0);
+        if ((g_debug().field_0 & debug_struct_t::OUTPUT_WARNING) != 0) {
+            va_list v2;
+            va_copy(v2, va);
 
-        if (a1->get_bval()) {
-            os_developer_options::instance()->set_flag(mString { "ASSERT_ON_WARNING" }, true);
+            char a1[2048];
+            vsnprintf(a1, 2048, arg0, va);
+            if (os_developer_options::instance()->get_flag(mString { "ASSERT_ON_WARNING" })) {
+                assert(a1);
+            } else {
+                debug_print_va(a1);
+            }
         }
         debug_menu_enabled();
         // TODO
@@ -6389,7 +6476,7 @@ void create_devopt_menu(debug_menu* parent)
 
     v90 = debug_menu_entry { mString { "MINI_MAP_ZOOM" } };
     v90.set_ival(0);
-    v90.set_max_value(4.0);
+    v90.set_max_value(28.0);
     v90.set_game_flags_handler(devopt_ints_handler);
     v90.set_id(67);
     add_debug_menu_entry(devopt_menu, &v90);
@@ -6642,7 +6729,7 @@ void populate_replay_menu(debug_menu_entry* entry)
 }
 
 
-#include "src/movie_manager.h"
+
 
 void create_replay_menu(debug_menu* parent)
 {
@@ -6993,7 +7080,7 @@ void debug_menu::init() {
     game_menu = create_menu("Game", handle_game_entry, 300);
     devopt_menu = create_menu("Devopts");
 	script_menu = create_menu("Script");
-        progression_menu = create_menu("Progression");
+    progression_menu = create_menu("Progression");
     level_select_menu = create_menu("Level Select");
 
     debug_menu_entry game_entry { game_menu };
