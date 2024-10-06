@@ -2,6 +2,7 @@
 
 #include "float.hpp"
 #include "variable.h"
+#include "fetext.h"
 
 struct nglFont;
 struct IGOFrontEnd;

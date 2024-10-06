@@ -134,6 +134,7 @@ struct mString
     }
 
 
+    mString from_char(const char* a2);
 
 
 

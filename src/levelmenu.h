@@ -157,17 +157,17 @@ void create_level_select_menu(debug_menu *level_select_menu)
     debug_menu_entry v28 {hero_select_menu};
 
     level_select_menu->add_entry(&v28);
-    for ( auto i = 0u; i < 22; ++i )
+    for ( auto i = 0u; i < 10; ++i )
     {
         auto v6 = 25;
         string_hash v5{hero_list[i]};
-        auto v11 = resource_key{v5, v6};
+        auto v11 = resource_key { v5, v6 };
         auto v30 = resource_manager::get_pack_file_stats(v11, nullptr, nullptr, nullptr);
         if ( v30 )
         {
             mString v35 {hero_list[i]};
 
-            debug_menu_entry v37 {v35.c_str()};
+            debug_menu_entry v37 { v35.from_char(hero_list[i]) };
 
             v37.set_game_flags_handler(hero_toggle_handler);
             v37.m_id = i;

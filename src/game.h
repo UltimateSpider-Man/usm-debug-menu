@@ -18,6 +18,7 @@
 #include "rumble_struct.h"
 #include "limited_timer.h"
 #include "game_button.h"
+#include "debug_menu.h"
 
 struct game_process
 {
@@ -235,6 +236,9 @@ struct game {
             func(this, nullptr);
         
     }
+
+
+
 
 
 

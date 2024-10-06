@@ -2,6 +2,8 @@
 
 #include "func_wrapper.h"
 
+#include <string>
+
 inline void *arch_memalign(size_t Alignment, size_t Size) {
 #if 0
     if constexpr (0) {

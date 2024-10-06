@@ -1,6 +1,8 @@
 #pragma once
 
 #include "bit.h"
+#include "string_hash_dictionary.h"
+#include "func_wrapper.h"
 
 struct string_hash
 {
@@ -27,7 +29,21 @@ struct string_hash
         string_hash_initialize(this, nullptr, a2, a3, a4);
     }
 
+    int* set(const char* str)
+    {
+        if constexpr (1) {
+            if (str == nullptr || str[0] != '\0') {
+                string_hash* a2 = 0;
+                string_hash* v3 = string_hash_dictionary::register_string(a2, str);
 
+            } else {
+                this->source_hash_code = 0;
+            }
+        } else {
+            CDECL_CALL(0x00542710, this, str);
+        }
+        return 0;
+    }
 };
 
 
