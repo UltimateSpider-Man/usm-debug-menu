@@ -70,6 +70,9 @@ Allows to switch between 3 cameras: player chase camera, user camera and scene a
 
 ## Extending functionality
 
+
+lol  ahahahahahaahahahahahahahahahahaahahhaahhahahahahaha
+
 If you desire to add any new option(s) to the menu, it's very simple.
 `create_menu` is used to create a new menu.
 `add_debug_menu_entry` is used to add entries to a menu.
